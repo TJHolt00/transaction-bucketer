@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transaction Bucketer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f0f14;--surface:#1a1a24;--surface2:#22222f;--border:#2e2e3e;--text:#e8e8f0;--text2:#888899;--accent:#66c2fa;--pos:#34d399;--neg:#f87171;--warn:#fbbf24;--radius:10px;--font:'Inter',system-ui,sans-serif}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;min-height:100vh}
+.app{max-width:1100px;margin:0 auto;padding:24px 20px}
+h1{font-size:20px;font-weight:600;margin-bottom:4px}
+.subtitle{font-size:13px;color:var(--text2);margin-bottom:24px}
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:24px}
+.tab{padding:9px 18px;font-size:13px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;background:none;border-top:none;border-left:none;border-right:none;transition:color .15s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;font-size:10px;padding:0 5px;margin-left:5px;font-weight:600}
+.badge.warn{background:#451a00;color:#fbbf24}
+.badge.info{background:#0c2340;color:#66c2fa}
+.screen{display:none}.screen.active{display:block}
+.sync-bar{display:flex;gap:8px;margin-bottom:16px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);flex-wrap:wrap;align-items:center}
+.sync-bar-label{font-size:12px;color:var(--text2);flex:1;min-width:120px}
+.btn-sm{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s}
+.btn-export{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-export:hover{border-color:var(--text2)}
+.btn-import-r{background:var(--surface2);color:var(--accent);border:1px solid var(--accent)}
+.btn-import-r:hover{background:#0c2340}
+.upload-zone{border:1.5px dashed var(--border);border-radius:var(--radius);padding:48px 24px;text-align:center;cursor:pointer;transition:border-color .15s}
+.upload-zone:hover{border-color:var(--accent)}
+.upload-zone h2{font-size:16px;font-weight:500;margin-bottom:8px}
+.upload-zone p{font-size:13px;color:var(--text2);margin-bottom:4px}
+.format-note{margin-top:12px;font-size:11px;color:var(--text2);background:var(--surface2);border-radius:8px;padding:8px 12px;display:inline-block}
+.status-msg{margin-top:16px;font-size:13px;color:var(--text2);text-align:center}
+.btn{padding:8px 18px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--accent);color:#000;border:none}
+.btn-primary:hover{background:#89d4ff}
+.btn-primary:disabled{opacity:.4;cursor:default}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--text2)}
+.btn-danger{background:none;border:1px solid var(--border);color:var(--text2);font-size:11px;padding:3px 8px;border-radius:6px;cursor:pointer}
+.btn-danger:hover{border-color:var(--neg);color:var(--neg)}
+.progress-wrap{margin-bottom:20px}
+.progress-label{font-size:12px;color:var(--text2);text-align:center;margin-bottom:6px}
+.progress-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+.merchant-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:600px;margin:0 auto}
+.merchant-eyebrow{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.merchant-name{font-size:20px;font-weight:600;margin-bottom:4px}
+.merchant-meta{font-size:12px;color:var(--text2);margin-bottom:16px}
+.samples{background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:20px}
+.sample-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)}
+.sample-row:last-child{border:none}
+.sample-desc{color:var(--text2);flex:1;margin-right:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.cat-btn{padding:9px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;text-align:center;transition:all .15s}
+.cat-btn:hover{border-color:var(--text2)}
+.cat-btn.selected{font-weight:500}
+.custom-row{display:flex;gap:8px;margin-bottom:16px;align-items:center}
+.custom-input{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
+.custom-input:focus{border-color:var(--accent)}
+.custom-input::placeholder{color:var(--text2)}
+.merchant-actions{display:flex;gap:10px;align-items:center}
+.review-done{text-align:center;padding:48px 24px}
+.review-done h2{font-size:18px;font-weight:500;margin-bottom:8px}
+.review-done p{font-size:13px;color:var(--text2);margin-bottom:24px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:24px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.metric-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.metric-value{font-size:22px;font-weight:600}
+.metric-value.pos{color:var(--pos)}
+.metric-value.neg{color:var(--neg)}
+.dash-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.dash-top select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
+.dash-top select option{background:var(--surface2)}
+.dash-layout{display:grid;grid-template-columns:230px 1fr;gap:20px}
+@media(max-width:700px){.dash-layout{grid-template-columns:1fr}}
+.section-label{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.chart-wrap{position:relative;height:190px;margin-bottom:20px}
+.cat-list{display:flex;flex-direction:column;gap:2px}
+.cat-row{display:flex;align-items:center;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid transparent;transition:all .1s}
+.cat-row:hover{background:var(--surface2)}
+.cat-row.active{background:var(--surface2);border-color:var(--border)}
+.cat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-right:9px}
+.cat-row-name{font-size:13px;flex:1}
+.cat-row-right{text-align:right}
+.cat-row-amt{font-size:12px;font-weight:500}
+.cat-row-ct{font-size:10px;color:var(--text2)}
+.controls{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.controls input,.controls select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
+.controls input{flex:1;min-width:140px}
+.controls input:focus,.controls select:focus{border-color:var(--accent)}
+.controls select option{background:var(--surface2)}
+.txn-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);margin-bottom:3px;background:var(--surface)}
+.txn-row.needs-review{border-color:#854f0b;background:#1a1200}
+.txn-date{font-size:11px;color:var(--text2);min-width:46px;flex-shrink:0}
+.txn-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.txn-desc{font-size:12px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.review-flag{font-size:10px;background:#451a00;color:#fbbf24;padding:1px 5px;border-radius:4px;flex-shrink:0}
+.txn-note{font-size:11px;padding:3px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);width:82px;flex-shrink:0;outline:none}
+.txn-note:focus{border-color:var(--accent)}
+.txn-cat{font-size:11px;padding:3px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);max-width:130px;flex-shrink:0;outline:none}
+.txn-cat:focus{border-color:var(--accent)}
+.txn-cat option{background:var(--surface2)}
+.txn-amt{font-size:12px;font-weight:500;min-width:64px;text-align:right;flex-shrink:0}
+.txn-amt.neg{color:var(--neg)}
+.txn-amt.pos{color:var(--pos)}
+.empty{padding:32px;text-align:center;color:var(--text2);font-size:13px}
+.page-row{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:12px;color:var(--text2)}
+.page-row button{padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:11px}
+.page-row button:disabled{opacity:.35;cursor:default}
+.unreviewed-note{font-size:12px;color:var(--warn)}
+.rule-row{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:8px;border:1px solid var(--border);margin-bottom:4px;background:var(--surface)}
+.rule-merchant{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rule-arrow{color:var(--text2);font-size:12px}
+.rule-cat{font-size:12px;font-weight:500}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Transaction Bucketer</h1>
+  <p class="subtitle">Import your Huntington CSV, review merchants once, get clean spending data forever.</p>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('import')" id="tab-import">Import</button>
+    <button class="tab" onclick="showTab('review')" id="tab-review">Review<span class="badge warn" id="reviewBadge" style="display:none">0</span></button>
+    <button class="tab" onclick="showTab('dashboard')" id="tab-dashboard">Dashboard</button>
+    <button class="tab" onclick="showTab('rules')" id="tab-rules">Rules<span class="badge info" id="rulesBadge">0</span></button>
+  </div>
+
+  <!-- IMPORT -->
+  <div class="screen active" id="screen-import">
+    <div class="sync-bar">
+      <span class="sync-bar-label">Sync rules &amp; categories across devices</span>
+      <button class="btn-sm btn-export" onclick="exportRules()">⬇ Export rules</button>
+      <label class="btn-sm btn-import-r" style="cursor:pointer" for="rulesFileIn">⬆ Import rules</label>
+      <input type="file" id="rulesFileIn" accept=".json" style="display:none">
+    </div>
+    <label for="fileIn">
+      <div class="upload-zone">
+        <h2>Import your Huntington CSV</h2>
+        <p>Click to select file — or drag and drop</p>
+        <div class="format-note">
+          Supports both formats:<br>
+          <strong>Phone/app export:</strong> Date, Description, Category, Amount<br>
+          <strong>Desktop/website export:</strong> Date, Reference, Payee Name, Memo, Amount
+        </div>
+      </div>
+    </label>
+    <input type="file" id="fileIn" accept=".csv" style="display:none">
+    <div class="status-msg" id="importStatus"></div>
+  </div>
+
+  <!-- REVIEW -->
+  <div class="screen" id="screen-review">
+    <div id="reviewDone" class="review-done" style="display:none">
+      <h2>All merchants reviewed</h2>
+      <p>Head to Dashboard to see your spending breakdown.</p>
+      <button class="btn btn-primary" onclick="showTab('dashboard')">View Dashboard →</button>
+    </div>
+    <div id="reviewQueue">
+      <div class="progress-wrap">
+        <div class="progress-label" id="progressLabel"></div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+      <div class="merchant-card" id="merchantCard"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="screen" id="screen-dashboard">
+    <div class="dash-top">
+      <select id="monthSel"></select>
+      <div class="unreviewed-note" id="unreviewedNote" style="display:none"></div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Income</div><div class="metric-value pos" id="mInc">—</div></div>
+      <div class="metric"><div class="metric-label">Spending</div><div class="metric-value neg" id="mSpend">—</div></div>
+      <div class="metric"><div class="metric-label">Net</div><div class="metric-value" id="mNet">—</div></div>
+      <div class="metric"><div class="metric-label">Transactions</div><div class="metric-value" id="mCount">—</div></div>
+    </div>
+    <div class="dash-layout">
+      <div>
+        <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+        <div class="section-label">By category</div>
+        <div class="cat-list" id="catList"></div>
+      </div>
+      <div>
+        <div class="controls">
+          <input type="text" id="searchBox" placeholder="Search transactions…">
+          <select id="catFilter"><option value="all">All categories</option></select>
+          <select id="typeFilter">
+            <option value="all">All</option>
+            <option value="expense">Expenses</option>
+            <option value="income">Income</option>
+            <option value="review">Needs review</option>
+          </select>
+        </div>
+        <div id="txnList"></div>
+        <div class="page-row">
+          <button onclick="changePage(-1)" id="prevBtn">← Prev</button>
+          <span id="pageInfo"></span>
+          <button onclick="changePage(1)" id="nextBtn">Next →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RULES -->
+  <div class="screen" id="screen-rules">
+    <div class="section-label" style="margin-bottom:12px">Saved merchant rules — applied automatically on every import</div>
+    <div id="rulesList"></div>
+  </div>
+</div>
+
+<script>
+// ── Categories ────────────────────────────────────────────────────────────
+let CATS=[
+  {id:'groceries',label:'Groceries',color:'#1d9e75'},
+  {id:'dining',label:'Dining / Restaurants',color:'#fb923c'},
+  {id:'fastfood',label:'Fast food',color:'#f97316'},
+  {id:'coffee',label:'Coffee',color:'#c47b2b'},
+  {id:'gas',label:'Gas / Transport',color:'#378add'},
+  {id:'utilities',label:'Utilities',color:'#a78bfa'},
+  {id:'housing',label:'Housing / Mortgage',color:'#ec4899'},
+  {id:'kids',label:'Kids / Activities',color:'#f472b6'},
+  {id:'shopping',label:'Shopping',color:'#fbbf24'},
+  {id:'subscriptions',label:'Subscriptions',color:'#34d399'},
+  {id:'healthcare',label:'Healthcare',color:'#f87171'},
+  {id:'transfers',label:'Transfers',color:'#94a3b8'},
+  {id:'income',label:'Income',color:'#22d3ee'},
+  {id:'auto',label:'Auto',color:'#60a5fa'},
+  {id:'home',label:'Home / Maintenance',color:'#a3e635'},
+  {id:'personal',label:'Personal care',color:'#e879f9'},
+  {id:'pet',label:'Pet',color:'#fb7185'},
+  {id:'other',label:'Other',color:'#6b7280'},
+];
+const DEFAULT_IDS=CATS.map(c=>c.id);
+function randColor(){return`hsl(${Math.floor(Math.random()*360)},60%,60%)`;}
+function getCatMap(){return Object.fromEntries(CATS.map(c=>[c.id,c]));}
+
+// ── Persistence ───────────────────────────────────────────────────────────
+let merchantRules={},askLater=new Set();
+try{merchantRules=JSON.parse(localStorage.getItem('txn_rules')||'{}');}catch(e){}
+try{askLater=new Set(JSON.parse(localStorage.getItem('txn_asklater')||'[]'));}catch(e){}
+try{const sc=JSON.parse(localStorage.getItem('txn_custom_cats')||'[]');CATS=[...CATS,...sc];}catch(e){}
+
+function saveRules(){
+  try{localStorage.setItem('txn_rules',JSON.stringify(merchantRules));}catch(e){}
+  try{localStorage.setItem('txn_asklater',JSON.stringify([...askLater]));}catch(e){}
+}
+function saveCustomCats(){
+  try{localStorage.setItem('txn_custom_cats',JSON.stringify(CATS.filter(c=>!DEFAULT_IDS.includes(c.id))));}catch(e){}
+}
+
+// ── Export / Import rules ─────────────────────────────────────────────────
+function exportRules(){
+  const data={rules:merchantRules,askLater:[...askLater],customCats:CATS.filter(c=>!DEFAULT_IDS.includes(c.id))};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='bucketer_rules.json';a.click();
+}
+
+// ── CSV auto-detection & parsing ──────────────────────────────────────────
+function parseCSVLine(line){
+  const cols=[];let cur='',inQ=false;
+  for(const ch of line){
+    if(ch==='"'){inQ=!inQ;}
+    else if(ch===','&&!inQ){cols.push(cur.trim().replace(/^"|"$/g,''));cur='';}
+    else cur+=ch;
+  }
+  cols.push(cur.trim().replace(/^"|"$/g,''));
+  return cols;
+}
+
+function normalizeDate(raw){
+  // Handle MM/DD/YYYY or M/D/YY or M/D/YYYY
+  const p=raw.split('/');
+  if(p.length===3){
+    const mo=p[0].padStart(2,'0'),dy=p[1].padStart(2,'0');
+    let yr=p[2];if(yr.length===2)yr='20'+yr;
+    return`${mo}/${dy}/${yr.slice(2)}`; // normalize to M/D/YY display
+  }
+  return raw;
+}
+
+function detectFormat(headerLine){
+  const h=headerLine.toLowerCase();
+  // Desktop format: has "payee name" or "reference number"
+  if(h.includes('payee name')||h.includes('reference number')||h.includes('memo')){
+    return'desktop';
+  }
+  // Phone/app format: Date, Description, Category, Amount
+  return'app';
+}
+
+function parseCsv(text){
+  const lines=text.trim().split('\n').filter(l=>l.trim());
+  if(lines.length<2)return[];
+  const format=detectFormat(lines[0]);
+  const txns=[];
+
+  for(let i=1;i<lines.length;i++){
+    const cols=parseCSVLine(lines[i]);
+    let dateStr='',desc='',huntCat='',amt=0;
+
+    if(format==='desktop'){
+      // "Date","Reference Number","Payee Name","Memo","Amount","Category Name","Transaction Number"
+      if(cols.length<5)continue;
+      dateStr=normalizeDate(cols[0]);
+      desc=cols[2].trim(); // Payee Name — already clean, no "PURCHASE" prefix
+      const memo=cols[3].trim();
+      huntCat=cols[5]||'';
+      // Use memo to supplement description for Zelle (has more detail there)
+      if(desc.toLowerCase().includes('zelle')&&memo)desc=memo.replace(/^Zelle Transaction\s+\d+\s*/i,'').trim()||desc;
+      amt=parseFloat(cols[4].replace(/[$,]/g,''));
+    } else {
+      // "Date","Description","Category","Amount","Split","Tags"
+      if(cols.length<4)continue;
+      dateStr=normalizeDate(cols[0]);
+      desc=cols[1].trim();
+      huntCat=cols[2]||'';
+      amt=parseFloat(cols[3].replace(/[$,]/g,''));
+    }
+
+    if(!dateStr||!desc||isNaN(amt))continue;
+    const{cat,confident,needsReview}=autoAssign(desc,huntCat);
+    txns.push({id:i,date:dateStr,desc,huntCat,amount:amt,cat,note:'',needsReview:!!needsReview,confident:!!confident,format});
+  }
+  return txns;
+}
+
+// ── Auto-categorization ───────────────────────────────────────────────────
+const HUNT_TO_CAT={
+  'groceries':'groceries','fast food':'fastfood','restaurants':'dining',
+  'coffee shop':'coffee','gasoline':'gas','pharmacy':'healthcare',
+  'doctor':'healthcare','dentist':'healthcare','school fee':'kids',
+  'membership':'kids','admission & tickets':'kids','movies & music':'subscriptions',
+  'cable & internet':'subscriptions','mortgage & rent':'housing',
+  'paycheck':'income','home improvement':'home','home maintenance':'home',
+  'home supplies':'home','insurance':'healthcare','parking':'gas',
+  'personal care products':'personal','hair':'personal','pet food':'pet',
+  'auto parts & service':'auto','fitness':'healthcare','bar & nightlife':'dining',
+  'rental car':'gas','books & magazines':'shopping','hobbies':'other',
+  'clothing':'shopping','transfer':'transfers',
+};
+
+const KW_RULES=[
+  {kw:['kroger fuel','sheetz','marathon','speedway','sunoco','kwik fill','circle k'],cat:'gas'},
+  {kw:['kroger','meijer','aldi','whole foods','trader joe','giant eagle','asian international','royo bread','wal-mart','walmart','meijer'],cat:'groceries'},
+  {kw:['mcdonald','wendy','taco bell','panda express','skyline chili','bob evans','bibibop','chipotle','panera','pizza hut','donatos','jets pizza','scrambler','roosters','graeters','burger king','arby','chick-fil','popeye','sonic drive','five guys','culver'],cat:'dining'},
+  {kw:['starbucks','coffee','dunkin','crimson cup','dutch bros'],cat:'coffee'},
+  {kw:['columbia gas','spectrum','internet','local waste','goodleap','at&t','verizon','t-mobile'],cat:'utilities'},
+  {kw:['crosscountry mortgage','mortgage'],cat:'housing'},
+  {kw:['jpmorgan chase','payroll','direct deposit'],cat:'income'},
+  {kw:['wells fargo auto'],cat:'auto'},
+  {kw:['netflix','hulu','spotify','kindle','prime video','disney plus','apple.com','microsoft','filter subscription','getepic','dualtone','paramount','peacock','hbo','youtube premium'],cat:'subscriptions'},
+  {kw:['aspca','petsmart','petco','lllreptile','pet supplies'],cat:'pet'},
+  {kw:['home depot','lowes','ace hardware','mnrd','amer home shield','scherzinger'],cat:'home'},
+  {kw:['lume','billie','manucurist','sash bag','juggy','shay hamper','ulta','sephora'],cat:'personal'},
+  {kw:['internet tfr','internal transfer'],cat:'transfers'},
+  {kw:['minuteclinic','copc','achieve psychology','caitlyn brown','medione','cvs minuteclinic'],cat:'healthcare'},
+  {kw:['big walnut soccer','gotsoccer','club ohio soccer','americheer','resolute athletic','payschl','music&arts','music arts','steppin high','allstar cheer','cheer athletic'],cat:'kids'},
+  {kw:['amazon'],cat:null}, // needs huntington hint or review
+];
+
+// Merchants always needing manual review (payment wrappers)
+const ALWAYS_REVIEW=['zelle','venmo','paypal','cashapp','afterpay','klarna','affirm'];
+
+function getMK(desc){return desc.toLowerCase().replace(/^purchase\s+/i,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim().substring(0,40);}
+function getCanon(desc){return desc.replace(/^PURCHASE\s+/i,'').replace(/\*[A-Z0-9]+$/,'').replace(/#\d+/g,'').replace(/\d{6,}/g,'').trim().substring(0,40);}
+function isAlwaysReview(desc){const dl=desc.toLowerCase();return ALWAYS_REVIEW.some(k=>dl.includes(k));}
+
+function autoAssign(desc,huntCat){
+  const dl=desc.toLowerCase(),mk=getMK(desc);
+  if(merchantRules[mk])return{cat:merchantRules[mk],confident:true};
+  if(isAlwaysReview(desc))return{cat:'other',confident:false,needsReview:true};
+  const hl=(huntCat||'').toLowerCase().trim();
+  if(hl&&hl!=='other'&&hl!==''&&HUNT_TO_CAT[hl])return{cat:HUNT_TO_CAT[hl],confident:true};
+  if(dl.includes('amazon')){
+    if(hl&&hl!=='other'&&hl!==''&&HUNT_TO_CAT[hl])return{cat:HUNT_TO_CAT[hl],confident:true};
+    return{cat:'shopping',confident:false,needsReview:true};
+  }
+  for(const r of KW_RULES){
+    if(r.kw.some(k=>dl.includes(k))){
+      if(r.cat===null)return{cat:'other',confident:false,needsReview:true};
+      return{cat:r.cat,confident:true};
+    }
+  }
+  if(askLater.has(mk))return{cat:'other',confident:false,needsReview:true};
+  return{cat:'other',confident:false,needsReview:true};
+}
+
+// ── State ─────────────────────────────────────────────────────────────────
+let allTxns=[],reviewQueue=[],reviewIdx=0,page=0,activeCat='all',pieChart=null;
+const PER_PAGE=50;
+
+function buildReviewQueue(txns){
+  const seen=new Set(),queue=[];
+  for(const t of txns){
+    if(!t.needsReview)continue;
+    const mk=getMK(t.desc);if(seen.has(mk))continue;seen.add(mk);
+    const samples=txns.filter(x=>getMK(x.desc)===mk).slice(0,3);
+    queue.push({mk,canonical:getCanon(t.desc),huntCat:t.huntCat,samples,selectedCat:null});
+  }
+  return queue;
+}
+
+function loadFile(text){
+  allTxns=parseCsv(text);
+  if(!allTxns.length){document.getElementById('importStatus').textContent='No transactions found — check the file format.';return;}
+  reviewQueue=buildReviewQueue(allTxns);
+  reviewIdx=0;
+  const fmt=allTxns[0]?.format==='desktop'?'desktop (website)':'app (mobile)';
+  updateBadges();populateMonths();populateCatFilter();
+  document.getElementById('importStatus').textContent=`Loaded ${allTxns.length.toLocaleString()} transactions (${fmt} format). ${reviewQueue.length} merchants need review.`;
+  if(reviewQueue.length>0){showTab('review');renderReview();}
+  else{showTab('dashboard');renderDashboard();}
+}
+
+function updateBadges(){
+  const rem=reviewQueue.length-reviewIdx;
+  const rb=document.getElementById('reviewBadge');
+  if(rem>0){rb.textContent=rem;rb.style.display='inline-flex';}else rb.style.display='none';
+  document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
+}
+
+// ── Review screen ─────────────────────────────────────────────────────────
+function renderReview(){
+  const rem=reviewQueue.length-reviewIdx;
+  if(rem<=0){
+    document.getElementById('reviewQueue').style.display='none';
+    document.getElementById('reviewDone').style.display='block';
+    renderDashboard();return;
+  }
+  document.getElementById('reviewQueue').style.display='block';
+  document.getElementById('reviewDone').style.display='none';
+  const pct=Math.round(reviewIdx/reviewQueue.length*100);
+  document.getElementById('progressFill').style.width=pct+'%';
+  document.getElementById('progressLabel').textContent=`${reviewIdx} of ${reviewQueue.length} merchants reviewed`;
+  const item=reviewQueue[reviewIdx];
+  const catBtns=CATS.map(c=>`<button class="cat-btn${item.selectedCat===c.id?' selected':''}" style="${item.selectedCat===c.id?`border-color:${c.color};color:${c.color};`:''}" onclick="selectCat('${c.id}')">${c.label}</button>`).join('');
+  const samples=item.samples.map(s=>`<div class="sample-row"><span class="sample-desc">${s.date} — ${s.desc.substring(0,46)}</span><span style="font-weight:500;color:${s.amount<0?'var(--neg)':'var(--pos)'};white-space:nowrap">${s.amount<0?'-':'+'}&dollar;${Math.abs(s.amount).toFixed(2)}</span></div>`).join('');
+  document.getElementById('merchantCard').innerHTML=`
+    <div class="merchant-eyebrow">Merchant ${reviewIdx+1} of ${reviewQueue.length}</div>
+    <div class="merchant-name">${item.canonical}</div>
+    <div class="merchant-meta">${item.samples.length} transaction${item.samples.length!==1?'s':''}${item.huntCat&&item.huntCat!==''?' &middot; Huntington: '+item.huntCat:''}</div>
+    <div class="samples">${samples}</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Which bucket does this belong to?</div>
+    <div class="cat-grid">${catBtns}</div>
+    <div class="custom-row">
+      <input class="custom-input" id="customCatInput" placeholder="Or type a new category name…" onkeydown="if(event.key==='Enter')addCustomCat()">
+      <button class="btn btn-secondary" onclick="addCustomCat()" style="white-space:nowrap;padding:7px 14px;font-size:12px">+ Add</button>
+    </div>
+    <div class="merchant-actions">
+      <button class="btn btn-primary" onclick="confirmReview()" ${!item.selectedCat?'disabled':''}>Save rule &amp; continue →</button>
+      <button class="btn btn-secondary" onclick="skipReview()">Ask me later</button>
+    </div>`;
+}
+
+function addCustomCat(){
+  const input=document.getElementById('customCatInput');
+  const name=input.value.trim();if(!name)return;
+  const id=name.toLowerCase().replace(/[^a-z0-9]/g,'_').substring(0,20)+'_'+Date.now().toString(36);
+  CATS.push({id,label:name,color:randColor()});
+  saveCustomCats();populateCatFilter();
+  reviewQueue[reviewIdx].selectedCat=id;
+  input.value='';renderReview();
+}
+
+function selectCat(cat){reviewQueue[reviewIdx].selectedCat=cat;renderReview();}
+
+function confirmReview(){
+  const item=reviewQueue[reviewIdx];if(!item.selectedCat)return;
+  merchantRules[item.mk]=item.selectedCat;saveRules();
+  allTxns.filter(t=>getMK(t.desc)===item.mk).forEach(t=>{t.cat=item.selectedCat;t.needsReview=false;t.confident=true;});
+  reviewIdx++;updateBadges();renderReview();
+}
+
+function skipReview(){
+  const item=reviewQueue[reviewIdx];askLater.add(item.mk);saveRules();
+  reviewIdx++;updateBadges();renderReview();
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────
+function populateMonths(){
+  const months=new Set();
+  allTxns.forEach(t=>{
+    const p=t.date.split('/');
+    if(p.length>=2)months.add(`${p[2]||'25'}-${p[0].padStart(2,'0')}`);
+  });
+  const sorted=[...months].sort();
+  const sel=document.getElementById('monthSel');
+  sel.innerHTML='<option value="all">All months</option>'+sorted.map(m=>{
+    const[y,mo]=m.split('-');
+    const d=new Date(2000+parseInt(y),parseInt(mo)-1,1);
+    return`<option value="${m}">${d.toLocaleString('default',{month:'long'})} 20${y}</option>`;
+  }).join('');
+}
+
+function populateCatFilter(){
+  document.getElementById('catFilter').innerHTML='<option value="all">All categories</option>'+CATS.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
+}
+
+function fmt(n){return'$'+Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+
+function renderDashboard(){
+  const catMap=getCatMap();
+  const month=document.getElementById('monthSel').value;
+  const search=document.getElementById('searchBox').value.toLowerCase();
+  const catF=document.getElementById('catFilter').value;
+  const typeF=document.getElementById('typeFilter').value;
+  let txns=allTxns;
+  if(month!=='all'){
+    txns=txns.filter(t=>{
+      const p=t.date.split('/');
+      return`${p[2]||'25'}-${p[0].padStart(2,'0')}`===month;
+    });
+  }
+  if(search)txns=txns.filter(t=>t.desc.toLowerCase().includes(search)||t.note.toLowerCase().includes(search));
+  if(catF!=='all')txns=txns.filter(t=>t.cat===catF);
+  if(typeF==='expense')txns=txns.filter(t=>t.amount<0);
+  if(typeF==='income')txns=txns.filter(t=>t.amount>0);
+  if(typeF==='review')txns=txns.filter(t=>t.needsReview);
+  if(activeCat!=='all')txns=txns.filter(t=>t.cat===activeCat);
+  const income=txns.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
+  const spend=txns.filter(t=>t.amount<0).reduce((s,t)=>s+t.amount,0);
+  const net=income+spend;
+  document.getElementById('mInc').textContent=fmt(income);
+  document.getElementById('mSpend').textContent='-'+fmt(spend);
+  const ne=document.getElementById('mNet');ne.textContent=(net>=0?'':'-')+fmt(net);ne.className='metric-value '+(net>=0?'pos':'neg');
+  document.getElementById('mCount').textContent=txns.length.toLocaleString();
+  const nr=txns.filter(t=>t.needsReview).length;
+  const nrEl=document.getElementById('unreviewedNote');
+  if(nr>0){nrEl.style.display='block';nrEl.textContent=`${nr} transactions still need review`;}else nrEl.style.display='none';
+  const catTotals={};CATS.forEach(c=>catTotals[c.id]=0);
+  txns.filter(t=>t.amount<0).forEach(t=>{catTotals[t.cat]=(catTotals[t.cat]||0)+Math.abs(t.amount);});
+  const sorted=CATS.filter(c=>c.id!=='income').map(c=>({...c,total:catTotals[c.id]||0,count:txns.filter(t=>t.cat===c.id).length})).filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
+  if(pieChart){pieChart.destroy();pieChart=null;}
+  if(sorted.some(c=>c.total>0)){
+    pieChart=new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels:sorted.map(c=>c.label),datasets:[{data:sorted.map(c=>c.total),backgroundColor:sorted.map(c=>c.color),borderWidth:1,borderColor:'rgba(0,0,0,0.3)'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.raw)}`}}}}});
+  }
+  document.getElementById('catList').innerHTML=sorted.map(c=>`
+    <div class="cat-row${activeCat===c.id?' active':''}" onclick="setActiveCat('${c.id}')">
+      <div class="cat-dot" style="background:${c.color}"></div>
+      <span class="cat-row-name">${c.label}</span>
+      <div class="cat-row-right"><div class="cat-row-amt">${fmt(c.total)}</div><div class="cat-row-ct">${c.count} txns</div></div>
+    </div>`).join('')+`<div class="cat-row${activeCat==='all'?' active':''}" onclick="setActiveCat('all')" style="margin-top:6px"><span class="cat-row-name" style="color:var(--text2);font-size:12px">Show all</span></div>`;
+  const start=page*PER_PAGE;const slice=txns.slice(start,start+PER_PAGE);
+  document.getElementById('txnList').innerHTML=slice.length?slice.map(t=>`
+    <div class="txn-row${t.needsReview?' needs-review':''}">
+      <span class="txn-date">${t.date}</span>
+      <div class="txn-dot" style="background:${catMap[t.cat]?.color||'#6b7280'}"></div>
+      <span class="txn-desc" title="${t.desc}">${t.desc}</span>
+      ${t.needsReview?'<span class="review-flag">review</span>':''}
+      <input class="txn-note" placeholder="note…" value="${t.note}" onchange="setNote(${t.id},this.value)">
+      <select class="txn-cat" onchange="changeTxnCat(${t.id},this.value)">${CATS.map(c=>`<option value="${c.id}"${c.id===t.cat?' selected':''}>${c.label}</option>`).join('')}</select>
+      <span class="txn-amt ${t.amount<0?'neg':'pos'}">${t.amount<0?'-':'+'}${fmt(t.amount)}</span>
+    </div>`).join(''):'<div class="empty">No transactions match your filters</div>';
+  const total=txns.length,totalPages=Math.ceil(total/PER_PAGE);
+  document.getElementById('pageInfo').textContent=total?`${start+1}–${Math.min(start+PER_PAGE,total)} of ${total}`:'0 results';
+  document.getElementById('prevBtn').disabled=page===0;
+  document.getElementById('nextBtn').disabled=page>=totalPages-1;
+}
+
+function setActiveCat(cat){activeCat=cat;page=0;renderDashboard();}
+function changePage(d){page+=d;renderDashboard();}
+function setNote(id,note){const t=allTxns.find(t=>t.id===id);if(t)t.note=note;}
+
+function changeTxnCat(id,newCat){
+  const catMap=getCatMap();
+  const txn=allTxns.find(t=>t.id===id);if(!txn)return;
+  txn.cat=newCat;txn.needsReview=false;
+  const mk=getMK(txn.desc);
+  if(confirm(`Save "${getCanon(txn.desc).substring(0,30)}" → ${catMap[newCat]?.label} as a permanent rule?\n\nOK = apply to all matching transactions\nCancel = just this one`)){
+    merchantRules[mk]=newCat;saveRules();
+    allTxns.filter(t=>getMK(t.desc)===mk).forEach(t=>{t.cat=newCat;t.needsReview=false;});
+    document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
+  }
+  renderDashboard();
+}
+
+// ── Rules screen ──────────────────────────────────────────────────────────
+function renderRules(){
+  const catMap=getCatMap();
+  const entries=Object.entries(merchantRules).sort((a,b)=>a[0].localeCompare(b[0]));
+  document.getElementById('rulesList').innerHTML=entries.length?entries.map(([mk,cat])=>`
+    <div class="rule-row">
+      <span class="rule-merchant">${mk}</span>
+      <span class="rule-arrow">→</span>
+      <span class="rule-cat" style="color:${catMap[cat]?.color||'#6b7280'}">${catMap[cat]?.label||cat}</span>
+      <button class="btn-danger" onclick="deleteRule('${mk}')">Remove</button>
+    </div>`).join(''):'<div class="empty">No rules saved yet.</div>';
+}
+
+function deleteRule(mk){
+  delete merchantRules[mk];saveRules();
+  document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
+  renderRules();
+}
+
+// ── Tab navigation ────────────────────────────────────────────────────────
+function showTab(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('screen-'+tab).classList.add('active');
+  if(tab==='dashboard')renderDashboard();
+  if(tab==='rules')renderRules();
+  if(tab==='review')renderReview();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('fileIn').addEventListener('change',e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();r.onload=ev=>loadFile(ev.target.result);r.readAsText(f);
+    e.target.value='';
+  });
+  document.getElementById('rulesFileIn').addEventListener('change',e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(data.rules)Object.assign(merchantRules,data.rules);
+        if(data.askLater)data.askLater.forEach(k=>askLater.add(k));
+        if(data.customCats&&data.customCats.length){
+          data.customCats.forEach(c=>{if(!CATS.find(x=>x.id===c.id))CATS.push(c);});
+          saveCustomCats();
+        }
+        saveRules();
+        document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
+        alert(`Imported ${Object.keys(data.rules||{}).length} rules!`);
+      }catch(err){alert('Could not read rules file.');}
+    };
+    r.readAsText(f);e.target.value='';
+  });
+  ['searchBox','monthSel','catFilter','typeFilter'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.addEventListener('change',()=>{page=0;renderDashboard();});}
+  });
+  document.getElementById('searchBox').addEventListener('input',()=>{page=0;renderDashboard();});
+  document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
+  const uz=document.querySelector('.upload-zone');
+  uz.addEventListener('dragover',e=>{e.preventDefault();uz.style.borderColor='var(--accent)';});
+  uz.addEventListener('dragleave',()=>{uz.style.borderColor='';});
+  uz.addEventListener('drop',e=>{
+    e.preventDefault();uz.style.borderColor='';
+    const f=e.dataTransfer.files[0];if(!f)return;
+    const r=new FileReader();r.onload=ev=>loadFile(ev.target.result);r.readAsText(f);
+  });
+});
+</script>
+</body>
+</html>
