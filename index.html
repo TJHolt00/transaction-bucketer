@@ -127,7 +127,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     <button class="tab" onclick="showTab('dashboard')" id="tab-dashboard">Dashboard</button>
     <button class="tab" onclick="showTab('rules')" id="tab-rules">Rules<span class="badge info" id="rulesBadge">0</span></button>
   </div>
- 
+
   <!-- IMPORT -->
   <div class="screen active" id="screen-import">
     <div class="sync-bar">
@@ -149,7 +149,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     <input type="file" id="fileIn" accept=".csv" style="display:none">
     <div class="status-msg" id="importStatus"></div>
   </div>
- 
+
   <!-- REVIEW -->
   <div class="screen" id="screen-review">
     <div id="reviewDone" class="review-done" style="display:none">
@@ -165,7 +165,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
       <div class="merchant-card" id="merchantCard"></div>
     </div>
   </div>
- 
+
   <!-- DASHBOARD -->
   <div class="screen" id="screen-dashboard">
     <div class="dash-top">
@@ -204,14 +204,14 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
       </div>
     </div>
   </div>
- 
+
   <!-- RULES -->
   <div class="screen" id="screen-rules">
     <div class="section-label" style="margin-bottom:12px">Saved merchant rules — applied automatically on every import</div>
     <div id="rulesList"></div>
   </div>
 </div>
- 
+
 <script>
 // ── Categories ────────────────────────────────────────────────────────────
 let CATS=[
@@ -237,13 +237,13 @@ let CATS=[
 const DEFAULT_IDS=CATS.map(c=>c.id);
 function randColor(){return`hsl(${Math.floor(Math.random()*360)},60%,60%)`;}
 function getCatMap(){return Object.fromEntries(CATS.map(c=>[c.id,c]));}
- 
+
 // ── Persistence ───────────────────────────────────────────────────────────
 let merchantRules={},askLater=new Set();
 try{merchantRules=JSON.parse(localStorage.getItem('txn_rules')||'{}');}catch(e){}
 try{askLater=new Set(JSON.parse(localStorage.getItem('txn_asklater')||'[]'));}catch(e){}
 try{const sc=JSON.parse(localStorage.getItem('txn_custom_cats')||'[]');CATS=[...CATS,...sc];}catch(e){}
- 
+
 function saveRules(){
   try{localStorage.setItem('txn_rules',JSON.stringify(merchantRules));}catch(e){}
   try{localStorage.setItem('txn_asklater',JSON.stringify([...askLater]));}catch(e){}
@@ -251,7 +251,7 @@ function saveRules(){
 function saveCustomCats(){
   try{localStorage.setItem('txn_custom_cats',JSON.stringify(CATS.filter(c=>!DEFAULT_IDS.includes(c.id))));}catch(e){}
 }
- 
+
 // ── Export / Import rules ─────────────────────────────────────────────────
 function exportRules(){
   const data={rules:merchantRules,askLater:[...askLater],customCats:CATS.filter(c=>!DEFAULT_IDS.includes(c.id))};
@@ -259,7 +259,7 @@ function exportRules(){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='bucketer_rules.json';a.click();
 }
- 
+
 // ── CSV auto-detection & parsing ──────────────────────────────────────────
 function parseCSVLine(line){
   const cols=[];let cur='',inQ=false;
@@ -271,7 +271,7 @@ function parseCSVLine(line){
   cols.push(cur.trim().replace(/^"|"$/g,''));
   return cols;
 }
- 
+
 function normalizeDate(raw){
   // Handle MM/DD/YYYY or M/D/YY or M/D/YYYY
   const p=raw.split('/');
@@ -282,7 +282,7 @@ function normalizeDate(raw){
   }
   return raw;
 }
- 
+
 function detectFormat(headerLine){
   const h=headerLine.toLowerCase();
   // Desktop format: has "payee name" or "reference number"
@@ -292,17 +292,17 @@ function detectFormat(headerLine){
   // Phone/app format: Date, Description, Category, Amount
   return'app';
 }
- 
+
 function parseCsv(text){
   const lines=text.trim().split('\n').filter(l=>l.trim());
   if(lines.length<2)return[];
   const format=detectFormat(lines[0]);
   const txns=[];
- 
+
   for(let i=1;i<lines.length;i++){
     const cols=parseCSVLine(lines[i]);
     let dateStr='',desc='',huntCat='',amt=0;
- 
+
     if(format==='desktop'){
       // "Date","Reference Number","Payee Name","Memo","Amount","Category Name","Transaction Number"
       if(cols.length<5)continue;
@@ -321,14 +321,14 @@ function parseCsv(text){
       huntCat=cols[2]||'';
       amt=parseFloat(cols[3].replace(/[$,]/g,''));
     }
- 
+
     if(!dateStr||!desc||isNaN(amt))continue;
     const{cat,confident,needsReview}=autoAssign(desc,huntCat);
     txns.push({id:i,date:dateStr,desc,huntCat,amount:amt,cat,note:'',needsReview:!!needsReview,confident:!!confident,format});
   }
   return txns;
 }
- 
+
 // ── Auto-categorization ───────────────────────────────────────────────────
 const HUNT_TO_CAT={
   'groceries':'groceries','fast food':'fastfood','restaurants':'dining',
@@ -343,35 +343,54 @@ const HUNT_TO_CAT={
   'rental car':'gas','books & magazines':'shopping','hobbies':'other',
   'clothing':'shopping','transfer':'transfers',
 };
- 
+
 const KW_RULES=[
-  {kw:['kroger fuel','sheetz','marathon','speedway','sunoco','kwik fill','circle k'],cat:'gas'},
-  {kw:['kroger','meijer','aldi','whole foods','trader joe','giant eagle','asian international','royo bread','wal-mart','walmart','meijer'],cat:'groceries'},
-  {kw:['mcdonald','wendy','taco bell','panda express','skyline chili','bob evans','bibibop','chipotle','panera','pizza hut','donatos','jets pizza','scrambler','roosters','graeters','burger king','arby','chick-fil','popeye','sonic drive','five guys','culver'],cat:'dining'},
-  {kw:['starbucks','coffee','dunkin','crimson cup','dutch bros'],cat:'coffee'},
-  {kw:['columbia gas','spectrum','internet','local waste','goodleap','at&t','verizon','t-mobile'],cat:'utilities'},
+  // Gas / Transport
+  {kw:['kroger fuel','sheetz','marathon','speedway','sunoco','kwik fill','circle k','bp','shell','exxon','mobil','chevron','pilot','loves travel','casey','getgo','united dairy farmers','udf'],cat:'gas'},
+  // Groceries
+  {kw:['kroger','meijer','aldi','whole foods','trader joe','giant eagle','asian international','royo bread','wal-mart','walmart','fresh thyme','sprouts','publix','safeway','food lion','market district'],cat:'groceries'},
+  // Dining / Restaurants
+  {kw:['mcdonald','wendy','taco bell','panda express','skyline chili','bob evans','bibibop','chipotle','panera','pizza hut','donatos','jets pizza','scrambler','roosters','graeters','burger king','arby','chick-fil','popeye','sonic drive','five guys','culver','mi sombrero','surve','firebirds','la matraca','indigo atlanta','bibibop','polaris north','polaris salad','polaris s dyn','amk jpmc','jpmc polaris','365 market','galena brewing','bar','grill','kitchen','tavern','bistro','eatery','diner','bbq','sushi','thai','chinese','mexican','italian','steakhouse','seafood','burger','pizza','wings','noodle','ramen'],cat:'dining'},
+  // Coffee
+  {kw:['starbucks','coffee','dunkin','crimson cup','dutch bros','biggby'],cat:'coffee'},
+  // Utilities
+  {kw:['columbia gas','spectrum','local waste serv','goodleap','at&t','verizon','t-mobile','duke energy','aep ','firstenergy','dominion','electric','water bill','sewer'],cat:'utilities'},
+  // Internet/Cable (also utilities)
+  {kw:['spectrum spectrum','xfinity','comcast','cox comm'],cat:'utilities'},
+  // Housing
   {kw:['crosscountry mortgage','mortgage'],cat:'housing'},
-  {kw:['jpmorgan chase','payroll','direct deposit'],cat:'income'},
-  {kw:['wells fargo auto'],cat:'auto'},
-  {kw:['netflix','hulu','spotify','kindle','prime video','disney plus','apple.com','microsoft','filter subscription','getepic','dualtone','paramount','peacock','hbo','youtube premium'],cat:'subscriptions'},
-  {kw:['aspca','petsmart','petco','lllreptile','pet supplies'],cat:'pet'},
-  {kw:['home depot','lowes','ace hardware','mnrd','amer home shield','scherzinger'],cat:'home'},
-  {kw:['lume','billie','manucurist','sash bag','juggy','shay hamper','ulta','sephora'],cat:'personal'},
-  {kw:['internet tfr','internal transfer'],cat:'transfers'},
-  {kw:['minuteclinic','copc','achieve psychology','caitlyn brown','medione','cvs minuteclinic'],cat:'healthcare'},
-  {kw:['big walnut soccer','gotsoccer','club ohio soccer','americheer','resolute athletic','payschl','music&arts','music arts','steppin high','allstar cheer','cheer athletic'],cat:'kids'},
-  {kw:['amazon'],cat:null}, // needs huntington hint or review
+  // Income
+  {kw:['jpmorgan chase b payroll','payroll dd','direct deposit'],cat:'income'},
+  // Auto
+  {kw:['wells fargo auto draft','napa store','napa auto','autozone','advance auto','jiffy lube','valvoline','firestone','goodyear','midas','pep boys'],cat:'auto'},
+  // Subscriptions
+  {kw:['netflix','hulu','spotify','kindle','prime video','disney plus','disney+','apple.com/bill','microsoft','filter subscription','getepic','dualtone','paramount','peacock','hbo','youtube premium','audible','sirius','pandora','crunchyroll','twitch','patreon','dropbox','icloud','google one','nintendo','playstation','xbox game','pc game pass'],cat:'subscriptions'},
+  // Pet
+  {kw:['aspca','petsmart','petco','lllreptile','pet supplies','pet smart','banfield'],cat:'pet'},
+  // Home / Maintenance
+  {kw:['home depot','lowes','ace hardware','mnrd','amer home shield','scherzinger pest','sunbury ace','menards','true value','do it best'],cat:'home'},
+  // Personal care
+  {kw:['lume','billie','manucurist','sash bag','juggy','shay hamper','ulta','sephora','great clips','sport clips','regis','fantastic sams','hair','nail','salon','spa','barber'],cat:'personal'},
+  // Transfers / Payments
+  {kw:['internet tfr','internal transfer','capital one mobile','capital one pmt','discover','citi card','synchrony','barclays'],cat:'transfers'},
+  // Healthcare
+  {kw:['minuteclinic','copc','achieve psychology','caitlyn brown','medione','cvs minuteclinic','urgent care','emergency','hospital','clinic','ohio health','mount carmel','nationwide children','optometrist','vision works','lenscrafters','walgreens pharmacy'],cat:'healthcare'},
+  // Kids / Activities
+  {kw:['big walnut soccer','gotsoccer','club ohio soccer','americheer','resolute athletic','payschl','music&arts','music arts','steppin high','allstar cheer','cheer athletic','ymca','planet fitness','anytime fitness','lifetime fitness','snap fitness','la fitness'],cat:'kids'},
+  // Shopping — general retail
+  {kw:['dollar tree','dollar tr','dollar general','five below','tuesday morning','goodwill','village discount','savers','salvation army','tjmaxx','marshalls','ross ','burlington','old navy','gap ','kohls','jcpenney','macys','nordstrom','express ','forever 21','h&m','zara','target','amazon','ebay','etsy','chewy','wayfair','overstock','wish ','shein'],cat:'shopping'},
+  // Amazon explicitly last so shopping rule catches it before null
 ];
- 
+
 // Merchants always needing manual review (payment wrappers)
 const ALWAYS_REVIEW=['zelle','venmo','paypal','cashapp','afterpay','klarna','affirm'];
- 
+
 // Words that are MEANINGFUL and should NOT be stripped when building merchant key
 // e.g. "KROGER FUEL" and "KROGER" should stay separate
 const MEANINGFUL_SUFFIXES=['fuel','pharmacy','clinic','online','express','market','fresh',
   'plus','pro','premium','prime','video','music','dental','optical','pet','auto',
   'gas','deli','cafe','bistro','grill','bar','drive','mobile','wireless'];
- 
+
 function getMK(desc){
   let s=desc.toLowerCase();
   // Strip "PURCHASE " prefix
@@ -403,7 +422,7 @@ function getMK(desc){
   if(words[1]&&(MEANINGFUL_SUFFIXES.includes(words[1])||words[1].length>4))stem.push(words[1]);
   return stem.join(' ').substring(0,40);
 }
- 
+
 function getCanon(desc){
   let s=desc.replace(/^PURCHASE\s+/i,'');
   s=s.replace(/\*[A-Z0-9]+/g,'').replace(/#\d+/g,'').replace(/\b[A-Z]?\d{5,}\b/g,'');
@@ -411,31 +430,25 @@ function getCanon(desc){
   return s.replace(/\s+/g,' ').trim().substring(0,42);
 }
 function isAlwaysReview(desc){const dl=desc.toLowerCase();return ALWAYS_REVIEW.some(k=>dl.includes(k));}
- 
+
 function autoAssign(desc,huntCat){
   const dl=desc.toLowerCase(),mk=getMK(desc);
   if(merchantRules[mk])return{cat:merchantRules[mk],confident:true};
   if(isAlwaysReview(desc))return{cat:'other',confident:false,needsReview:true};
-  const hl=(huntCat||'').toLowerCase().trim();
-  if(hl&&hl!=='other'&&hl!==''&&HUNT_TO_CAT[hl])return{cat:HUNT_TO_CAT[hl],confident:true};
-  if(dl.includes('amazon')){
-    if(hl&&hl!=='other'&&hl!==''&&HUNT_TO_CAT[hl])return{cat:HUNT_TO_CAT[hl],confident:true};
-    return{cat:'shopping',confident:false,needsReview:true};
-  }
+  // Keyword rules only — Huntington hints not used (unreliable)
   for(const r of KW_RULES){
     if(r.kw.some(k=>dl.includes(k))){
-      if(r.cat===null)return{cat:'other',confident:false,needsReview:true};
       return{cat:r.cat,confident:true};
     }
   }
   if(askLater.has(mk))return{cat:'other',confident:false,needsReview:true};
   return{cat:'other',confident:false,needsReview:true};
 }
- 
+
 // ── State ─────────────────────────────────────────────────────────────────
 let allTxns=[],reviewQueue=[],reviewIdx=0,page=0,activeCat='all',pieChart=null;
 const PER_PAGE=50;
- 
+
 function buildReviewQueue(txns){
   const seen=new Set(),queue=[];
   for(const t of txns){
@@ -446,7 +459,7 @@ function buildReviewQueue(txns){
   }
   return queue;
 }
- 
+
 function loadFile(text){
   allTxns=parseCsv(text);
   if(!allTxns.length){document.getElementById('importStatus').textContent='No transactions found — check the file format.';return;}
@@ -458,14 +471,14 @@ function loadFile(text){
   if(reviewQueue.length>0){showTab('review');renderReview();}
   else{showTab('dashboard');renderDashboard();}
 }
- 
+
 function updateBadges(){
   const rem=reviewQueue.length-reviewIdx;
   const rb=document.getElementById('reviewBadge');
   if(rem>0){rb.textContent=rem;rb.style.display='inline-flex';}else rb.style.display='none';
   document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
 }
- 
+
 // ── Review screen ─────────────────────────────────────────────────────────
 function renderReview(){
   const rem=reviewQueue.length-reviewIdx;
@@ -498,7 +511,7 @@ function renderReview(){
       <button class="btn btn-secondary" onclick="skipReview()">Ask me later</button>
     </div>`;
 }
- 
+
 function addCustomCat(){
   const input=document.getElementById('customCatInput');
   const name=input.value.trim();if(!name)return;
@@ -508,21 +521,21 @@ function addCustomCat(){
   reviewQueue[reviewIdx].selectedCat=id;
   input.value='';renderReview();
 }
- 
+
 function selectCat(cat){reviewQueue[reviewIdx].selectedCat=cat;renderReview();}
- 
+
 function confirmReview(){
   const item=reviewQueue[reviewIdx];if(!item.selectedCat)return;
   merchantRules[item.mk]=item.selectedCat;saveRules();
   allTxns.filter(t=>getMK(t.desc)===item.mk).forEach(t=>{t.cat=item.selectedCat;t.needsReview=false;t.confident=true;});
   reviewIdx++;updateBadges();renderReview();
 }
- 
+
 function skipReview(){
   const item=reviewQueue[reviewIdx];askLater.add(item.mk);saveRules();
   reviewIdx++;updateBadges();renderReview();
 }
- 
+
 // ── Dashboard ─────────────────────────────────────────────────────────────
 function populateMonths(){
   const months=new Set();
@@ -538,13 +551,13 @@ function populateMonths(){
     return`<option value="${m}">${d.toLocaleString('default',{month:'long'})} 20${y}</option>`;
   }).join('');
 }
- 
+
 function populateCatFilter(){
   document.getElementById('catFilter').innerHTML='<option value="all">All categories</option>'+CATS.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
 }
- 
+
 function fmt(n){return'$'+Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
- 
+
 function renderDashboard(){
   const catMap=getCatMap();
   const month=document.getElementById('monthSel').value;
@@ -603,11 +616,11 @@ function renderDashboard(){
   document.getElementById('prevBtn').disabled=page===0;
   document.getElementById('nextBtn').disabled=page>=totalPages-1;
 }
- 
+
 function setActiveCat(cat){activeCat=cat;page=0;renderDashboard();}
 function changePage(d){page+=d;renderDashboard();}
 function setNote(id,note){const t=allTxns.find(t=>t.id===id);if(t)t.note=note;}
- 
+
 function changeTxnCat(id,newCat){
   const catMap=getCatMap();
   const txn=allTxns.find(t=>t.id===id);if(!txn)return;
@@ -620,7 +633,7 @@ function changeTxnCat(id,newCat){
   }
   renderDashboard();
 }
- 
+
 // ── Rules screen ──────────────────────────────────────────────────────────
 function renderRules(){
   const catMap=getCatMap();
@@ -633,13 +646,13 @@ function renderRules(){
       <button class="btn-danger" onclick="deleteRule('${mk}')">Remove</button>
     </div>`).join(''):'<div class="empty">No rules saved yet.</div>';
 }
- 
+
 function deleteRule(mk){
   delete merchantRules[mk];saveRules();
   document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
   renderRules();
 }
- 
+
 // ── Tab navigation ────────────────────────────────────────────────────────
 function showTab(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -650,7 +663,7 @@ function showTab(tab){
   if(tab==='rules')renderRules();
   if(tab==='review')renderReview();
 }
- 
+
 // ── Init ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('fileIn').addEventListener('change',e=>{
