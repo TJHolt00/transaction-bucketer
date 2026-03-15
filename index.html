@@ -136,17 +136,16 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
       <label class="btn-sm btn-import-r" style="cursor:pointer" for="rulesFileIn">⬆ Import rules</label>
       <input type="file" id="rulesFileIn" accept=".json" style="display:none">
     </div>
-    <label for="fileIn">
-      <div class="upload-zone">
-        <h2>Import your Huntington CSV</h2>
-        <p>Click to select file — or drag and drop</p>
-        <div class="format-note">
-          Supports both formats:<br>
-          <strong>Phone/app export:</strong> Date, Description, Category, Amount<br>
-          <strong>Desktop/website export:</strong> Date, Reference, Payee Name, Memo, Amount
-        </div>
+    <div class="upload-zone" onclick="document.getElementById('fileIn').click()">
+      <h2>Import your Huntington CSV</h2>
+      <p>Tap or click to select file</p>
+      <button class="btn btn-primary" style="margin:12px 0" onclick="event.stopPropagation();document.getElementById('fileIn').click()">Select CSV file</button>
+      <div class="format-note">
+        Supports both formats:<br>
+        <strong>Phone/app export:</strong> Date, Description, Category, Amount<br>
+        <strong>Desktop/website export:</strong> Date, Reference, Payee Name, Memo, Amount
       </div>
-    </label>
+    </div>
     <input type="file" id="fileIn" accept=".csv" style="display:none">
     <div class="status-msg" id="importStatus"></div>
   </div>
@@ -367,8 +366,50 @@ const KW_RULES=[
 // Merchants always needing manual review (payment wrappers)
 const ALWAYS_REVIEW=['zelle','venmo','paypal','cashapp','afterpay','klarna','affirm'];
  
-function getMK(desc){return desc.toLowerCase().replace(/^purchase\s+/i,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim().substring(0,40);}
-function getCanon(desc){return desc.replace(/^PURCHASE\s+/i,'').replace(/\*[A-Z0-9]+$/,'').replace(/#\d+/g,'').replace(/\d{6,}/g,'').trim().substring(0,40);}
+// Words that are MEANINGFUL and should NOT be stripped when building merchant key
+// e.g. "KROGER FUEL" and "KROGER" should stay separate
+const MEANINGFUL_SUFFIXES=['fuel','pharmacy','clinic','online','express','market','fresh',
+  'plus','pro','premium','prime','video','music','dental','optical','pet','auto',
+  'gas','deli','cafe','bistro','grill','bar','drive','mobile','wireless'];
+ 
+function getMK(desc){
+  let s=desc.toLowerCase();
+  // Strip "PURCHASE " prefix
+  s=s.replace(/^purchase\s+/i,'');
+  // Strip everything after * (transaction codes like *ZP8KV6LH0)
+  s=s.replace(/\*[a-z0-9]+/gi,' ');
+  // Strip long number strings (6+ digits — store/transaction IDs)
+  s=s.replace(/\b\d{6,}\b/g,' ');
+  // Strip short trailing number codes like #8131, F30010, #038891
+  s=s.replace(/#\d+/g,' ');
+  s=s.replace(/\b[a-z]?\d{4,}\b/g,' ');
+  // Strip SP+ and SP prefix (Stripe merchants)
+  s=s.replace(/^sp\+?aff?\s*\*?\s*/,'');
+  s=s.replace(/^sp\s+/,'');
+  // Strip TST* prefix (Toast POS)
+  s=s.replace(/^tst\*\s*/,'');
+  // Strip SQ * prefix (Square)
+  s=s.replace(/^sq\s*\*\s*/,'');
+  // Strip trailing location codes (2-3 letter state/city codes at end)
+  s=s.replace(/\s+[a-z]{2,3}\s*$/,'');
+  // Clean up special chars and extra spaces
+  s=s.replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  // Now check if meaningful suffix words are present — if so keep them
+  // Otherwise just take first 2 meaningful words as the stem
+  const words=s.split(' ').filter(w=>w.length>1);
+  if(words.length<=2)return words.join(' ').substring(0,40);
+  // Keep first word always, keep second word if it's meaningful
+  const stem=[words[0]];
+  if(words[1]&&(MEANINGFUL_SUFFIXES.includes(words[1])||words[1].length>4))stem.push(words[1]);
+  return stem.join(' ').substring(0,40);
+}
+ 
+function getCanon(desc){
+  let s=desc.replace(/^PURCHASE\s+/i,'');
+  s=s.replace(/\*[A-Z0-9]+/g,'').replace(/#\d+/g,'').replace(/\b[A-Z]?\d{5,}\b/g,'');
+  s=s.replace(/^SP\+?AFF?\s*\*?\s*/i,'').replace(/^SP\s+/i,'').replace(/^TST\*\s*/i,'').replace(/^SQ\s*\*\s*/i,'');
+  return s.replace(/\s+/g,' ').trim().substring(0,42);
+}
 function isAlwaysReview(desc){const dl=desc.toLowerCase();return ALWAYS_REVIEW.some(k=>dl.includes(k));}
  
 function autoAssign(desc,huntCat){
