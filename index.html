@@ -12,14 +12,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 .app{max-width:1100px;margin:0 auto;padding:24px 20px}
 h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .subtitle{font-size:13px;color:var(--text2);margin-bottom:24px}
-.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:24px}
-.tab{padding:9px 18px;font-size:13px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;background:none;border-top:none;border-left:none;border-right:none;transition:color .15s}
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:24px;overflow-x:auto}
+.tab{padding:9px 16px;font-size:13px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;background:none;border-top:none;border-left:none;border-right:none;transition:color .15s;white-space:nowrap}
 .tab:hover{color:var(--text)}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
 .badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;font-size:10px;padding:0 5px;margin-left:5px;font-weight:600}
 .badge.warn{background:#451a00;color:#fbbf24}
 .badge.info{background:#0c2340;color:#66c2fa}
 .screen{display:none}.screen.active{display:block}
+/* Sync bar */
 .sync-bar{display:flex;gap:8px;margin-bottom:16px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);flex-wrap:wrap;align-items:center}
 .sync-bar-label{font-size:12px;color:var(--text2);flex:1;min-width:120px}
 .btn-sm{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s}
@@ -27,12 +28,14 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .btn-export:hover{border-color:var(--text2)}
 .btn-import-r{background:var(--surface2);color:var(--accent);border:1px solid var(--accent)}
 .btn-import-r:hover{background:#0c2340}
+/* Upload */
 .upload-zone{border:1.5px dashed var(--border);border-radius:var(--radius);padding:48px 24px;text-align:center;cursor:pointer;transition:border-color .15s}
 .upload-zone:hover{border-color:var(--accent)}
 .upload-zone h2{font-size:16px;font-weight:500;margin-bottom:8px}
 .upload-zone p{font-size:13px;color:var(--text2);margin-bottom:4px}
-.format-note{margin-top:12px;font-size:11px;color:var(--text2);background:var(--surface2);border-radius:8px;padding:8px 12px;display:inline-block}
+.format-note{margin-top:12px;font-size:11px;color:var(--text2);background:var(--surface2);border-radius:8px;padding:8px 12px;display:inline-block;text-align:left}
 .status-msg{margin-top:16px;font-size:13px;color:var(--text2);text-align:center}
+/* Buttons */
 .btn{padding:8px 18px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
 .btn-primary{background:var(--accent);color:#000;border:none}
 .btn-primary:hover{background:#89d4ff}
@@ -41,36 +44,52 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .btn-secondary:hover{border-color:var(--text2)}
 .btn-danger{background:none;border:1px solid var(--border);color:var(--text2);font-size:11px;padding:3px 8px;border-radius:6px;cursor:pointer}
 .btn-danger:hover{border-color:var(--neg);color:var(--neg)}
+/* Progress */
 .progress-wrap{margin-bottom:20px}
 .progress-label{font-size:12px;color:var(--text2);text-align:center;margin-bottom:6px}
 .progress-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
 .progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
-.merchant-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:600px;margin:0 auto}
-.merchant-eyebrow{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
-.merchant-name{font-size:20px;font-weight:600;margin-bottom:4px}
-.merchant-meta{font-size:12px;color:var(--text2);margin-bottom:16px}
+/* Merchant review card */
+.review-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:600px;margin:0 auto}
+.review-eyebrow{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.review-name{font-size:20px;font-weight:600;margin-bottom:4px}
+.review-meta{font-size:12px;color:var(--text2);margin-bottom:16px}
 .samples{background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:20px}
 .sample-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)}
 .sample-row:last-child{border:none}
 .sample-desc{color:var(--text2);flex:1;margin-right:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Transaction review card */
+.txn-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:600px;margin:0 auto}
+.txn-card-amount{font-size:32px;font-weight:700;margin:8px 0}
+.txn-card-amount.neg{color:var(--neg)}
+.txn-card-amount.pos{color:var(--pos)}
+.txn-card-date{font-size:13px;color:var(--text2);margin-bottom:4px}
+.txn-card-desc{font-size:16px;font-weight:500;margin-bottom:4px}
+.txn-card-meta{font-size:12px;color:var(--text2);margin-bottom:20px}
+.note-field{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none;margin-bottom:16px}
+.note-field:focus{border-color:var(--accent)}
+/* Cat grid */
 .cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .cat-btn{padding:9px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;text-align:center;transition:all .15s}
 .cat-btn:hover{border-color:var(--text2)}
 .cat-btn.selected{font-weight:500}
+/* Custom category */
 .custom-row{display:flex;gap:8px;margin-bottom:16px;align-items:center}
 .custom-input{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
 .custom-input:focus{border-color:var(--accent)}
 .custom-input::placeholder{color:var(--text2)}
-.merchant-actions{display:flex;gap:10px;align-items:center}
+.review-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .review-done{text-align:center;padding:48px 24px}
 .review-done h2{font-size:18px;font-weight:500;margin-bottom:8px}
 .review-done p{font-size:13px;color:var(--text2);margin-bottom:24px}
+/* Metrics */
 .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:24px}
 .metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
 .metric-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
 .metric-value{font-size:22px;font-weight:600}
 .metric-value.pos{color:var(--pos)}
 .metric-value.neg{color:var(--neg)}
+/* Dashboard */
 .dash-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
 .dash-top select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
 .dash-top select option{background:var(--surface2)}
@@ -87,17 +106,20 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .cat-row-right{text-align:right}
 .cat-row-amt{font-size:12px;font-weight:500}
 .cat-row-ct{font-size:10px;color:var(--text2)}
+/* Controls */
 .controls{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .controls input,.controls select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
 .controls input{flex:1;min-width:140px}
 .controls input:focus,.controls select:focus{border-color:var(--accent)}
 .controls select option{background:var(--surface2)}
+/* Transaction rows */
 .txn-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);margin-bottom:3px;background:var(--surface)}
 .txn-row.needs-review{border-color:#854f0b;background:#1a1200}
 .txn-date{font-size:11px;color:var(--text2);min-width:46px;flex-shrink:0}
 .txn-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .txn-desc{font-size:12px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.review-flag{font-size:10px;background:#451a00;color:#fbbf24;padding:1px 5px;border-radius:4px;flex-shrink:0}
+.review-flag{font-size:10px;background:#451a00;color:#fbbf24;padding:1px 5px;border-radius:4px;flex-shrink:0;cursor:pointer}
+.review-flag:hover{background:#6b3a00}
 .txn-note{font-size:11px;padding:3px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);width:82px;flex-shrink:0;outline:none}
 .txn-note:focus{border-color:var(--accent)}
 .txn-cat{font-size:11px;padding:3px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);max-width:130px;flex-shrink:0;outline:none}
@@ -110,7 +132,8 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .page-row{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:12px;color:var(--text2)}
 .page-row button{padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:11px}
 .page-row button:disabled{opacity:.35;cursor:default}
-.unreviewed-note{font-size:12px;color:var(--warn)}
+.unreviewed-note{font-size:12px;color:var(--warn);cursor:pointer;text-decoration:underline}
+/* Rules */
 .rule-row{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:8px;border:1px solid var(--border);margin-bottom:4px;background:var(--surface)}
 .rule-merchant{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rule-arrow{color:var(--text2);font-size:12px}
@@ -123,7 +146,8 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
   <p class="subtitle">Import your Huntington CSV, review merchants once, get clean spending data forever.</p>
   <div class="tabs">
     <button class="tab active" onclick="showTab('import')" id="tab-import">Import</button>
-    <button class="tab" onclick="showTab('review')" id="tab-review">Review<span class="badge warn" id="reviewBadge" style="display:none">0</span></button>
+    <button class="tab" onclick="showTab('review')" id="tab-review">Merchants<span class="badge warn" id="reviewBadge" style="display:none">0</span></button>
+    <button class="tab" onclick="showTab('txnreview')" id="tab-txnreview">Transactions<span class="badge warn" id="txnReviewBadge" style="display:none">0</span></button>
     <button class="tab" onclick="showTab('dashboard')" id="tab-dashboard">Dashboard</button>
     <button class="tab" onclick="showTab('rules')" id="tab-rules">Rules<span class="badge info" id="rulesBadge">0</span></button>
   </div>
@@ -138,31 +162,47 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     </div>
     <div class="upload-zone" onclick="document.getElementById('fileIn').click()">
       <h2>Import your Huntington CSV</h2>
-      <p>Tap or click to select file</p>
+      <p>Tap or click anywhere here to select file</p>
       <button class="btn btn-primary" style="margin:12px 0" onclick="event.stopPropagation();document.getElementById('fileIn').click()">Select CSV file</button>
       <div class="format-note">
         Supports both formats:<br>
-        <strong>Phone/app export:</strong> Date, Description, Category, Amount<br>
-        <strong>Desktop/website export:</strong> Date, Reference, Payee Name, Memo, Amount
+        <strong>Phone/app:</strong> Date, Description, Category, Amount<br>
+        <strong>Desktop/website:</strong> Date, Reference, Payee Name, Memo, Amount
       </div>
     </div>
     <input type="file" id="fileIn" accept=".csv" style="display:none">
     <div class="status-msg" id="importStatus"></div>
   </div>
 
-  <!-- REVIEW -->
+  <!-- MERCHANT REVIEW -->
   <div class="screen" id="screen-review">
-    <div id="reviewDone" class="review-done" style="display:none">
+    <div id="merchantReviewDone" class="review-done" style="display:none">
       <h2>All merchants reviewed</h2>
-      <p>Head to Dashboard to see your spending breakdown.</p>
+      <p>Any merchants you skipped are in the Transactions tab for individual review.</p>
+      <button class="btn btn-primary" onclick="showTab('txnreview')">Review individual transactions →</button>
+    </div>
+    <div id="merchantReviewQueue">
+      <div class="progress-wrap">
+        <div class="progress-label" id="merchantProgressLabel"></div>
+        <div class="progress-bar"><div class="progress-fill" id="merchantProgressFill" style="width:0%"></div></div>
+      </div>
+      <div class="review-card" id="merchantCard"></div>
+    </div>
+  </div>
+
+  <!-- TRANSACTION REVIEW -->
+  <div class="screen" id="screen-txnreview">
+    <div id="txnReviewDone" class="review-done" style="display:none">
+      <h2>All transactions reviewed</h2>
+      <p>Head to Dashboard to see your full spending breakdown.</p>
       <button class="btn btn-primary" onclick="showTab('dashboard')">View Dashboard →</button>
     </div>
-    <div id="reviewQueue">
+    <div id="txnReviewQueue">
       <div class="progress-wrap">
-        <div class="progress-label" id="progressLabel"></div>
-        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="progress-label" id="txnProgressLabel"></div>
+        <div class="progress-bar"><div class="progress-fill" id="txnProgressFill" style="width:0%"></div></div>
       </div>
-      <div class="merchant-card" id="merchantCard"></div>
+      <div class="txn-card" id="txnCard"></div>
     </div>
   </div>
 
@@ -170,7 +210,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
   <div class="screen" id="screen-dashboard">
     <div class="dash-top">
       <select id="monthSel"></select>
-      <div class="unreviewed-note" id="unreviewedNote" style="display:none"></div>
+      <div class="unreviewed-note" id="unreviewedNote" style="display:none" onclick="showTab('txnreview')"></div>
     </div>
     <div class="metrics">
       <div class="metric"><div class="metric-label">Income</div><div class="metric-value pos" id="mInc">—</div></div>
@@ -243,7 +283,6 @@ let merchantRules={},askLater=new Set();
 try{merchantRules=JSON.parse(localStorage.getItem('txn_rules')||'{}');}catch(e){}
 try{askLater=new Set(JSON.parse(localStorage.getItem('txn_asklater')||'[]'));}catch(e){}
 try{const sc=JSON.parse(localStorage.getItem('txn_custom_cats')||'[]');CATS=[...CATS,...sc];}catch(e){}
-
 function saveRules(){
   try{localStorage.setItem('txn_rules',JSON.stringify(merchantRules));}catch(e){}
   try{localStorage.setItem('txn_asklater',JSON.stringify([...askLater]));}catch(e){}
@@ -256,11 +295,77 @@ function saveCustomCats(){
 function exportRules(){
   const data={rules:merchantRules,askLater:[...askLater],customCats:CATS.filter(c=>!DEFAULT_IDS.includes(c.id))};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='bucketer_rules.json';a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='bucketer_rules.json';a.click();
 }
 
-// ── CSV auto-detection & parsing ──────────────────────────────────────────
+// ── Keyword rules ─────────────────────────────────────────────────────────
+const KW_RULES=[
+  {kw:['kroger fuel','sheetz','marathon','speedway','sunoco','kwik fill','circle k','bp ','shell ','exxon','mobil','chevron','pilot travel','loves travel','casey','getgo','united dairy f','udf','flying j','bjs fuel','certified oil'],cat:'gas'},
+  {kw:['kroger','meijer','aldi','whole foods','trader joe','giant eagle','asian international','royo bread','wal-mart','walmart','fresh thyme','sprouts','carfagna','food lion','bjs wholesale','costco whse','wm superc','supreme fresh'],cat:'groceries'},
+  {kw:['mcdonald','wendy','taco bell','panda express','skyline chili','bob evans','bibibop','chipotle','panera','pizza hut','donatos','jets pizza','scrambler','roosters','graeters','burger king','arby','chick-fil','popeye','sonic drive','five guys','culver','mi sombrero','surve','firebirds','la matraca','indigo atlanta','polaris north','polaris salad','polaris s dyn','amk jpmc','jpmc polaris','365 market','galena brewing','applebees','jersey mikes','jimmy johns','kfc ','raising cane','huey magoo','condado tacos','rusty bucket','buffalo wild','texas roadhouse','chicken salad chick','dairy queen','daves hot chicken','tropical smoothie','el vaquero','senor antonio','taquero','brown derby','famous famiglia','beer barrel','pies pints','pastimes pub','sand bar','standardized brew','nostalgia brew','district 13','katzinger','koble greek','las margaritas','hyderabad house','panchos tacos','harry buffalo','levy@','levy restaurants','levy1psc','uep chuan','farmer fridge','clear fork dairy','creme corner','orange leaf','whits frozen','coldstone','cinnabon','doc popcorn','whistle keg','birdie books','scioto valley coff','meehans','doordash','dd doordash','dd citybarbe','dd pandaexpr','buckeye pho','harbor house','tst '],cat:'dining'},
+  {kw:['starbucks','coffee','dunkin','crimson cup','dutch bros','biggby','tim horton','travelin tom','gathering grounds'],cat:'coffee'},
+  {kw:['columbia gas','spectrum spectrum','local waste','goodleap','at&t','verizon','t-mobile','duke energy','aep ','firstenergy','dominion energy','ring basic','nexgreen','wwp'],cat:'utilities'},
+  {kw:['crosscountry mortgage','mortgage'],cat:'housing'},
+  {kw:['jpmorgan chase b payroll','payroll dd','direct deposit'],cat:'income'},
+  {kw:['wells fargo auto draft','napa store','napa auto','autozone','advance auto','jiffy lube','valvoline','firestone','goodyear','midas','boyds tir','pond tire','roush honda','delaware cjdr','car wash','sun classics car'],cat:'auto'},
+  {kw:['netflix','hulu','spotify','kindle','prime video','disney plus','disneyplus','apple.com/bill','microsoft','filter subscription','getepic','dualtone','paramount','peacock','hbo','youtube premium','audible','nintendo','playstation','xbox game','pc game pass','steamgames','boxcast','frontier a8'],cat:'subscriptions'},
+  {kw:['aspca','petsmart','petco','lllreptile','pet supplies','banfield','annehurst veterinary','sunbury veterinary','big walnut animal','tractor supply','muttsandco'],cat:'pet'},
+  {kw:['home depot','homedepot','lowes','ace hardware','mnrd','amer home shield','scherzinger pest','sunbury ace','menards','grace cleaners','westerville cleaners'],cat:'home'},
+  {kw:['lume','billie','manucurist','sash bag','juggy','shay hamper','ulta','sephora','great clips','sport clips','regis','hair','nail','salon','spa','barber','gloss luxe','gloss kayleigh','luxe beauty','kenneth','cosmetics co'],cat:'personal'},
+  {kw:['internet tfr','internal transfer','capital one mobile','capital one pmt','discover card','citi card','synchrony','barclays','jpm chase 401k','overdraft fee','non-huntington atm','international transaction fee','huntington bp merch','pp federal credit'],cat:'transfers'},
+  {kw:['minuteclinic','copc','achieve psychology','caitlyn brown','medione','urgent care','ohio health','mount carmel','nationwide children','optometrist','vision works','lenscrafters','anthony dental','vision professiona','associates in central','loy ohiohealth','dncss nationwide','discount drug','tommy nobis','well within'],cat:'healthcare'},
+  {kw:['big walnut soccer','gotsoccer','club ohio soccer','americheer','resolute athletic','payschl','music&arts','music arts','steppin high','allstar cheer','cheer athletic','ymca','planet fitness','anytime fitness','snap fitness','la fitness','us all star fed','primo cheer','primoticketing','ohsaa','bishop watterson','bw athletic','lakewood athletic','cougar corner','pickerington band','sc big walnut','pep rally apparel','rebel athletic','rebel athleti','spooky nook','rockin jump','ctlp rockin','arnold sports','kalahari','hobart arena','medieval times','soccer plus','soccer village','penn beech','inspired driving','gdex'],cat:'kids'},
+  {kw:['wdw ','disney on ice','columbus zoo','ssa columbus','ssa zoombezi','zoombezi','amc online','cinemark','uec premier','tm lumineers','tm outlaw','tm wallflowers','spirit airlines','avis ','theparkingspot','cmh parking','laz parking','gccc goodale','columbus commons park','play it games','dragon lair','go calendars','boardwalk paradise','ron jon','skywheel','surf sun','landshark','mexico pavilion','trex orlando','crystal arts','tez natl','hilton hotels','holiday inn','kalahari resorts','sq amusement','sq adventure','sq concessions','sq columbus','sq fairgrounds','wright concessions','vendor 13','special event china','sq merchandise','fandango'],cat:'other'},
+  {kw:['pmt ohio','pmt oplates','pmt bureau motor','2cool traffic','2levy'],cat:'other'},
+  {kw:['dollar tree','dollar tr','dollar general','five belo','goodwill','village discount','tjmaxx','t j maxx','marshalls','ross ','burlington','old navy','gap ','kohls','jcpenney','macys','nordstrom','express ','hollister','carter','bath and body','joann','michaels stores','ikea','best buy','gamestop','barnes','famous footwea','dsw','dicks sporting','dickssportinggoods','lenovo','br factory','altar state','bargain beachwear','tanger outlets','ye olde pro','elaracraft','creativejamco','oracle ring','the comfy','navage nasal','raiven','peach truck','wittichs candy','disneystore','adidas','asics','puma','crocs','american eagle','target','amazon','amzn','ebay','etsy','chewy','wayfair','costco','five below','bath body','sq outlet','sq lemonade','sq money','sq grown','sq tater','sq dippin','sq fingers','sq frozen'],cat:'shopping'},
+];
+
+const ALWAYS_REVIEW=['venmo','paypal ','cashapp','afterpay','klarna','affirm','zelle'];
+
+// ── Merchant key & canon name ─────────────────────────────────────────────
+const MEANINGFUL_SUFFIXES=['fuel','pharmacy','clinic','online','express','market','fresh','plus','pro','premium','prime','video','music','dental','optical','pet','auto','gas','deli','cafe','bistro','grill','bar','drive','mobile','wireless'];
+
+function getMK(desc){
+  let s=desc.toLowerCase();
+  s=s.replace(/^purchase\s+/i,'');
+  s=s.replace(/\*[a-z0-9]+/gi,' ');
+  s=s.replace(/\b\d{6,}\b/g,' ');
+  s=s.replace(/#\d+/g,' ');
+  s=s.replace(/\b[a-z]?\d{4,}\b/g,' ');
+  s=s.replace(/^sp\+?aff?\s*\*?\s*/,'');
+  s=s.replace(/^sp\s+/,'');
+  s=s.replace(/^tst\*\s*/,'');
+  s=s.replace(/^sq\s*\*\s*/,'');
+  s=s.replace(/\s+[a-z]{2,3}\s*$/,'');
+  s=s.replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  const words=s.split(' ').filter(w=>w.length>1);
+  if(words.length<=2)return words.join(' ').substring(0,40);
+  const stem=[words[0]];
+  if(words[1]&&(MEANINGFUL_SUFFIXES.includes(words[1])||words[1].length>4))stem.push(words[1]);
+  return stem.join(' ').substring(0,40);
+}
+
+function getCanon(desc){
+  let s=desc.replace(/^PURCHASE\s+/i,'');
+  s=s.replace(/\*[A-Z0-9]+/g,'').replace(/#\d+/g,'').replace(/\b[A-Z]?\d{5,}\b/g,'');
+  s=s.replace(/^SP\+?AFF?\s*\*?\s*/i,'').replace(/^SP\s+/i,'').replace(/^TST\*\s*/i,'').replace(/^SQ\s*\*\s*/i,'');
+  return s.replace(/\s+/g,' ').trim().substring(0,42);
+}
+
+function isAlwaysReview(desc){const dl=desc.toLowerCase();return ALWAYS_REVIEW.some(k=>dl.includes(k));}
+
+function autoAssign(desc){
+  const dl=desc.toLowerCase(),mk=getMK(desc);
+  if(merchantRules[mk])return{cat:merchantRules[mk],confident:true};
+  if(isAlwaysReview(desc))return{cat:'other',confident:false,needsReview:true};
+  for(const r of KW_RULES){
+    if(r.kw.some(k=>dl.includes(k)))return{cat:r.cat,confident:true};
+  }
+  if(askLater.has(mk))return{cat:'other',confident:false,needsReview:true,txnReview:true};
+  return{cat:'other',confident:false,needsReview:true};
+}
+
+// ── CSV parsing ───────────────────────────────────────────────────────────
 function parseCSVLine(line){
   const cols=[];let cur='',inQ=false;
   for(const ch of line){
@@ -273,23 +378,18 @@ function parseCSVLine(line){
 }
 
 function normalizeDate(raw){
-  // Handle MM/DD/YYYY or M/D/YY or M/D/YYYY
   const p=raw.split('/');
   if(p.length===3){
     const mo=p[0].padStart(2,'0'),dy=p[1].padStart(2,'0');
     let yr=p[2];if(yr.length===2)yr='20'+yr;
-    return`${mo}/${dy}/${yr.slice(2)}`; // normalize to M/D/YY display
+    return`${mo}/${dy}/${yr.slice(2)}`;
   }
   return raw;
 }
 
 function detectFormat(headerLine){
   const h=headerLine.toLowerCase();
-  // Desktop format: has "payee name" or "reference number"
-  if(h.includes('payee name')||h.includes('reference number')||h.includes('memo')){
-    return'desktop';
-  }
-  // Phone/app format: Date, Description, Category, Amount
+  if(h.includes('payee name')||h.includes('reference number')||h.includes('memo'))return'desktop';
   return'app';
 }
 
@@ -298,251 +398,200 @@ function parseCsv(text){
   if(lines.length<2)return[];
   const format=detectFormat(lines[0]);
   const txns=[];
-
   for(let i=1;i<lines.length;i++){
     const cols=parseCSVLine(lines[i]);
-    let dateStr='',desc='',huntCat='',amt=0;
-
+    let dateStr='',desc='',amt=0;
     if(format==='desktop'){
-      // "Date","Reference Number","Payee Name","Memo","Amount","Category Name","Transaction Number"
       if(cols.length<5)continue;
       dateStr=normalizeDate(cols[0]);
-      desc=cols[2].trim(); // Payee Name — already clean, no "PURCHASE" prefix
+      desc=cols[2].trim();
       const memo=cols[3].trim();
-      huntCat=cols[5]||'';
-      // Use memo to supplement description for Zelle (has more detail there)
       if(desc.toLowerCase().includes('zelle')&&memo)desc=memo.replace(/^Zelle Transaction\s+\d+\s*/i,'').trim()||desc;
       amt=parseFloat(cols[4].replace(/[$,]/g,''));
-    } else {
-      // "Date","Description","Category","Amount","Split","Tags"
+    }else{
       if(cols.length<4)continue;
       dateStr=normalizeDate(cols[0]);
       desc=cols[1].trim();
-      huntCat=cols[2]||'';
       amt=parseFloat(cols[3].replace(/[$,]/g,''));
     }
-
     if(!dateStr||!desc||isNaN(amt))continue;
-    const{cat,confident,needsReview}=autoAssign(desc,huntCat);
-    txns.push({id:i,date:dateStr,desc,huntCat,amount:amt,cat,note:'',needsReview:!!needsReview,confident:!!confident,format});
+    const{cat,confident,needsReview,txnReview}=autoAssign(desc);
+    txns.push({id:i,date:dateStr,desc,amount:amt,cat,note:'',needsReview:!!needsReview,txnReview:!!txnReview,confident:!!confident,format});
   }
   return txns;
 }
 
-// ── Auto-categorization ───────────────────────────────────────────────────
-const HUNT_TO_CAT={
-  'groceries':'groceries','fast food':'fastfood','restaurants':'dining',
-  'coffee shop':'coffee','gasoline':'gas','pharmacy':'healthcare',
-  'doctor':'healthcare','dentist':'healthcare','school fee':'kids',
-  'membership':'kids','admission & tickets':'kids','movies & music':'subscriptions',
-  'cable & internet':'subscriptions','mortgage & rent':'housing',
-  'paycheck':'income','home improvement':'home','home maintenance':'home',
-  'home supplies':'home','insurance':'healthcare','parking':'gas',
-  'personal care products':'personal','hair':'personal','pet food':'pet',
-  'auto parts & service':'auto','fitness':'healthcare','bar & nightlife':'dining',
-  'rental car':'gas','books & magazines':'shopping','hobbies':'other',
-  'clothing':'shopping','transfer':'transfers',
-};
-
-const KW_RULES=[
-  // Gas / Transport
-  {kw:['kroger fuel','sheetz','marathon','speedway','sunoco','kwik fill','circle k','bp','shell','exxon','mobil','chevron','pilot','loves travel','casey','getgo','united dairy farmers','udf'],cat:'gas'},
-  // Groceries
-  {kw:['kroger','meijer','aldi','whole foods','trader joe','giant eagle','asian international','royo bread','wal-mart','walmart','fresh thyme','sprouts','publix','safeway','food lion','market district'],cat:'groceries'},
-  // Dining / Restaurants
-  {kw:['mcdonald','wendy','taco bell','panda express','skyline chili','bob evans','bibibop','chipotle','panera','pizza hut','donatos','jets pizza','scrambler','roosters','graeters','burger king','arby','chick-fil','popeye','sonic drive','five guys','culver','mi sombrero','surve','firebirds','la matraca','indigo atlanta','bibibop','polaris north','polaris salad','polaris s dyn','amk jpmc','jpmc polaris','365 market','galena brewing','bar','grill','kitchen','tavern','bistro','eatery','diner','bbq','sushi','thai','chinese','mexican','italian','steakhouse','seafood','burger','pizza','wings','noodle','ramen'],cat:'dining'},
-  // Coffee
-  {kw:['starbucks','coffee','dunkin','crimson cup','dutch bros','biggby'],cat:'coffee'},
-  // Utilities
-  {kw:['columbia gas','spectrum','local waste serv','goodleap','at&t','verizon','t-mobile','duke energy','aep ','firstenergy','dominion','electric','water bill','sewer'],cat:'utilities'},
-  // Internet/Cable (also utilities)
-  {kw:['spectrum spectrum','xfinity','comcast','cox comm'],cat:'utilities'},
-  // Housing
-  {kw:['crosscountry mortgage','mortgage'],cat:'housing'},
-  // Income
-  {kw:['jpmorgan chase b payroll','payroll dd','direct deposit'],cat:'income'},
-  // Auto
-  {kw:['wells fargo auto draft','napa store','napa auto','autozone','advance auto','jiffy lube','valvoline','firestone','goodyear','midas','pep boys'],cat:'auto'},
-  // Subscriptions
-  {kw:['netflix','hulu','spotify','kindle','prime video','disney plus','disney+','apple.com/bill','microsoft','filter subscription','getepic','dualtone','paramount','peacock','hbo','youtube premium','audible','sirius','pandora','crunchyroll','twitch','patreon','dropbox','icloud','google one','nintendo','playstation','xbox game','pc game pass'],cat:'subscriptions'},
-  // Pet
-  {kw:['aspca','petsmart','petco','lllreptile','pet supplies','pet smart','banfield'],cat:'pet'},
-  // Home / Maintenance
-  {kw:['home depot','lowes','ace hardware','mnrd','amer home shield','scherzinger pest','sunbury ace','menards','true value','do it best'],cat:'home'},
-  // Personal care
-  {kw:['lume','billie','manucurist','sash bag','juggy','shay hamper','ulta','sephora','great clips','sport clips','regis','fantastic sams','hair','nail','salon','spa','barber'],cat:'personal'},
-  // Transfers / Payments
-  {kw:['internet tfr','internal transfer','capital one mobile','capital one pmt','discover','citi card','synchrony','barclays'],cat:'transfers'},
-  // Healthcare
-  {kw:['minuteclinic','copc','achieve psychology','caitlyn brown','medione','cvs minuteclinic','urgent care','emergency','hospital','clinic','ohio health','mount carmel','nationwide children','optometrist','vision works','lenscrafters','walgreens pharmacy'],cat:'healthcare'},
-  // Kids / Activities
-  {kw:['big walnut soccer','gotsoccer','club ohio soccer','americheer','resolute athletic','payschl','music&arts','music arts','steppin high','allstar cheer','cheer athletic','ymca','planet fitness','anytime fitness','lifetime fitness','snap fitness','la fitness'],cat:'kids'},
-  // Shopping — general retail
-  {kw:['dollar tree','dollar tr','dollar general','five below','tuesday morning','goodwill','village discount','savers','salvation army','tjmaxx','marshalls','ross ','burlington','old navy','gap ','kohls','jcpenney','macys','nordstrom','express ','forever 21','h&m','zara','target','amazon','ebay','etsy','chewy','wayfair','overstock','wish ','shein'],cat:'shopping'},
-  // Amazon explicitly last so shopping rule catches it before null
-];
-
-// Merchants always needing manual review (payment wrappers)
-const ALWAYS_REVIEW=['zelle','venmo','paypal','cashapp','afterpay','klarna','affirm'];
-
-// Words that are MEANINGFUL and should NOT be stripped when building merchant key
-// e.g. "KROGER FUEL" and "KROGER" should stay separate
-const MEANINGFUL_SUFFIXES=['fuel','pharmacy','clinic','online','express','market','fresh',
-  'plus','pro','premium','prime','video','music','dental','optical','pet','auto',
-  'gas','deli','cafe','bistro','grill','bar','drive','mobile','wireless'];
-
-function getMK(desc){
-  let s=desc.toLowerCase();
-  // Strip "PURCHASE " prefix
-  s=s.replace(/^purchase\s+/i,'');
-  // Strip everything after * (transaction codes like *ZP8KV6LH0)
-  s=s.replace(/\*[a-z0-9]+/gi,' ');
-  // Strip long number strings (6+ digits — store/transaction IDs)
-  s=s.replace(/\b\d{6,}\b/g,' ');
-  // Strip short trailing number codes like #8131, F30010, #038891
-  s=s.replace(/#\d+/g,' ');
-  s=s.replace(/\b[a-z]?\d{4,}\b/g,' ');
-  // Strip SP+ and SP prefix (Stripe merchants)
-  s=s.replace(/^sp\+?aff?\s*\*?\s*/,'');
-  s=s.replace(/^sp\s+/,'');
-  // Strip TST* prefix (Toast POS)
-  s=s.replace(/^tst\*\s*/,'');
-  // Strip SQ * prefix (Square)
-  s=s.replace(/^sq\s*\*\s*/,'');
-  // Strip trailing location codes (2-3 letter state/city codes at end)
-  s=s.replace(/\s+[a-z]{2,3}\s*$/,'');
-  // Clean up special chars and extra spaces
-  s=s.replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
-  // Now check if meaningful suffix words are present — if so keep them
-  // Otherwise just take first 2 meaningful words as the stem
-  const words=s.split(' ').filter(w=>w.length>1);
-  if(words.length<=2)return words.join(' ').substring(0,40);
-  // Keep first word always, keep second word if it's meaningful
-  const stem=[words[0]];
-  if(words[1]&&(MEANINGFUL_SUFFIXES.includes(words[1])||words[1].length>4))stem.push(words[1]);
-  return stem.join(' ').substring(0,40);
-}
-
-function getCanon(desc){
-  let s=desc.replace(/^PURCHASE\s+/i,'');
-  s=s.replace(/\*[A-Z0-9]+/g,'').replace(/#\d+/g,'').replace(/\b[A-Z]?\d{5,}\b/g,'');
-  s=s.replace(/^SP\+?AFF?\s*\*?\s*/i,'').replace(/^SP\s+/i,'').replace(/^TST\*\s*/i,'').replace(/^SQ\s*\*\s*/i,'');
-  return s.replace(/\s+/g,' ').trim().substring(0,42);
-}
-function isAlwaysReview(desc){const dl=desc.toLowerCase();return ALWAYS_REVIEW.some(k=>dl.includes(k));}
-
-function autoAssign(desc,huntCat){
-  const dl=desc.toLowerCase(),mk=getMK(desc);
-  if(merchantRules[mk])return{cat:merchantRules[mk],confident:true};
-  if(isAlwaysReview(desc))return{cat:'other',confident:false,needsReview:true};
-  // Keyword rules only — Huntington hints not used (unreliable)
-  for(const r of KW_RULES){
-    if(r.kw.some(k=>dl.includes(k))){
-      return{cat:r.cat,confident:true};
-    }
-  }
-  if(askLater.has(mk))return{cat:'other',confident:false,needsReview:true};
-  return{cat:'other',confident:false,needsReview:true};
-}
-
 // ── State ─────────────────────────────────────────────────────────────────
-let allTxns=[],reviewQueue=[],reviewIdx=0,page=0,activeCat='all',pieChart=null;
+let allTxns=[],merchantQueue=[],merchantIdx=0;
+let txnQueue=[],txnQueueIdx=0;
+let page=0,activeCat='all',pieChart=null;
 const PER_PAGE=50;
 
-function buildReviewQueue(txns){
+function buildMerchantQueue(txns){
   const seen=new Set(),queue=[];
   for(const t of txns){
-    if(!t.needsReview)continue;
+    if(!t.needsReview||t.txnReview)continue;
     const mk=getMK(t.desc);if(seen.has(mk))continue;seen.add(mk);
     const samples=txns.filter(x=>getMK(x.desc)===mk).slice(0,3);
-    queue.push({mk,canonical:getCanon(t.desc),huntCat:t.huntCat,samples,selectedCat:null});
+    queue.push({mk,canonical:getCanon(t.desc),samples,selectedCat:null});
   }
   return queue;
+}
+
+function buildTxnQueue(txns){
+  return txns.filter(t=>t.needsReview&&t.txnReview);
 }
 
 function loadFile(text){
   allTxns=parseCsv(text);
   if(!allTxns.length){document.getElementById('importStatus').textContent='No transactions found — check the file format.';return;}
-  reviewQueue=buildReviewQueue(allTxns);
-  reviewIdx=0;
-  const fmt=allTxns[0]?.format==='desktop'?'desktop (website)':'app (mobile)';
+  merchantQueue=buildMerchantQueue(allTxns);
+  txnQueue=buildTxnQueue(allTxns);
+  txnQueueIdx=0;merchantIdx=0;
   updateBadges();populateMonths();populateCatFilter();
-  document.getElementById('importStatus').textContent=`Loaded ${allTxns.length.toLocaleString()} transactions (${fmt} format). ${reviewQueue.length} merchants need review.`;
-  if(reviewQueue.length>0){showTab('review');renderReview();}
+  const fmt=allTxns[0]?.format==='desktop'?'desktop (website)':'app (mobile)';
+  document.getElementById('importStatus').textContent=`Loaded ${allTxns.length.toLocaleString()} transactions (${fmt} format). ${merchantQueue.length} merchants + ${txnQueue.length} individual transactions need review.`;
+  if(merchantQueue.length>0){showTab('review');renderMerchantReview();}
+  else if(txnQueue.length>0){showTab('txnreview');renderTxnReview();}
   else{showTab('dashboard');renderDashboard();}
 }
 
 function updateBadges(){
-  const rem=reviewQueue.length-reviewIdx;
+  const mr=merchantQueue.length-merchantIdx;
   const rb=document.getElementById('reviewBadge');
-  if(rem>0){rb.textContent=rem;rb.style.display='inline-flex';}else rb.style.display='none';
+  if(mr>0){rb.textContent=mr;rb.style.display='inline-flex';}else rb.style.display='none';
+  const tr=txnQueue.filter(t=>t.needsReview&&t.txnReview).length;
+  const trb=document.getElementById('txnReviewBadge');
+  if(tr>0){trb.textContent=tr;trb.style.display='inline-flex';}else trb.style.display='none';
   document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
 }
 
-// ── Review screen ─────────────────────────────────────────────────────────
-function renderReview(){
-  const rem=reviewQueue.length-reviewIdx;
+// ── Merchant review ───────────────────────────────────────────────────────
+function renderMerchantReview(){
+  const rem=merchantQueue.length-merchantIdx;
   if(rem<=0){
-    document.getElementById('reviewQueue').style.display='none';
-    document.getElementById('reviewDone').style.display='block';
-    renderDashboard();return;
+    document.getElementById('merchantReviewQueue').style.display='none';
+    document.getElementById('merchantReviewDone').style.display='block';
+    return;
   }
-  document.getElementById('reviewQueue').style.display='block';
-  document.getElementById('reviewDone').style.display='none';
-  const pct=Math.round(reviewIdx/reviewQueue.length*100);
-  document.getElementById('progressFill').style.width=pct+'%';
-  document.getElementById('progressLabel').textContent=`${reviewIdx} of ${reviewQueue.length} merchants reviewed`;
-  const item=reviewQueue[reviewIdx];
-  const catBtns=CATS.map(c=>`<button class="cat-btn${item.selectedCat===c.id?' selected':''}" style="${item.selectedCat===c.id?`border-color:${c.color};color:${c.color};`:''}" onclick="selectCat('${c.id}')">${c.label}</button>`).join('');
+  document.getElementById('merchantReviewQueue').style.display='block';
+  document.getElementById('merchantReviewDone').style.display='none';
+  const pct=Math.round(merchantIdx/merchantQueue.length*100);
+  document.getElementById('merchantProgressFill').style.width=pct+'%';
+  document.getElementById('merchantProgressLabel').textContent=`${merchantIdx} of ${merchantQueue.length} merchants reviewed`;
+  const item=merchantQueue[merchantIdx];
+  const catBtns=CATS.map(c=>`<button class="cat-btn${item.selectedCat===c.id?' selected':''}" style="${item.selectedCat===c.id?`border-color:${c.color};color:${c.color};`:''}" onclick="selectMerchantCat('${c.id}')">${c.label}</button>`).join('');
   const samples=item.samples.map(s=>`<div class="sample-row"><span class="sample-desc">${s.date} — ${s.desc.substring(0,46)}</span><span style="font-weight:500;color:${s.amount<0?'var(--neg)':'var(--pos)'};white-space:nowrap">${s.amount<0?'-':'+'}&dollar;${Math.abs(s.amount).toFixed(2)}</span></div>`).join('');
   document.getElementById('merchantCard').innerHTML=`
-    <div class="merchant-eyebrow">Merchant ${reviewIdx+1} of ${reviewQueue.length}</div>
-    <div class="merchant-name">${item.canonical}</div>
-    <div class="merchant-meta">${item.samples.length} transaction${item.samples.length!==1?'s':''}${item.huntCat&&item.huntCat!==''?' &middot; Huntington: '+item.huntCat:''}</div>
+    <div class="review-eyebrow">Merchant ${merchantIdx+1} of ${merchantQueue.length}</div>
+    <div class="review-name">${item.canonical}</div>
+    <div class="review-meta">${item.samples.length} transaction${item.samples.length!==1?'s':''} found</div>
     <div class="samples">${samples}</div>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Which bucket does this belong to?</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Which bucket does this belong to? (applies to all matching transactions)</div>
     <div class="cat-grid">${catBtns}</div>
     <div class="custom-row">
-      <input class="custom-input" id="customCatInput" placeholder="Or type a new category name…" onkeydown="if(event.key==='Enter')addCustomCat()">
-      <button class="btn btn-secondary" onclick="addCustomCat()" style="white-space:nowrap;padding:7px 14px;font-size:12px">+ Add</button>
+      <input class="custom-input" id="merchantCustomInput" placeholder="Or type a new category name…" onkeydown="if(event.key==='Enter')addMerchantCustomCat()">
+      <button class="btn btn-secondary" onclick="addMerchantCustomCat()" style="white-space:nowrap;padding:7px 14px;font-size:12px">+ Add</button>
     </div>
-    <div class="merchant-actions">
-      <button class="btn btn-primary" onclick="confirmReview()" ${!item.selectedCat?'disabled':''}>Save rule &amp; continue →</button>
-      <button class="btn btn-secondary" onclick="skipReview()">Ask me later</button>
+    <div class="review-actions">
+      <button class="btn btn-primary" onclick="confirmMerchantReview()" ${!item.selectedCat?'disabled':''}>Save rule &amp; continue →</button>
+      <button class="btn btn-secondary" onclick="skipMerchantToTxnReview()">Review transaction by transaction</button>
     </div>`;
 }
 
-function addCustomCat(){
-  const input=document.getElementById('customCatInput');
+function selectMerchantCat(cat){merchantQueue[merchantIdx].selectedCat=cat;renderMerchantReview();}
+
+function addMerchantCustomCat(){
+  const input=document.getElementById('merchantCustomInput');
   const name=input.value.trim();if(!name)return;
   const id=name.toLowerCase().replace(/[^a-z0-9]/g,'_').substring(0,20)+'_'+Date.now().toString(36);
   CATS.push({id,label:name,color:randColor()});
   saveCustomCats();populateCatFilter();
-  reviewQueue[reviewIdx].selectedCat=id;
-  input.value='';renderReview();
+  merchantQueue[merchantIdx].selectedCat=id;
+  input.value='';renderMerchantReview();
 }
 
-function selectCat(cat){reviewQueue[reviewIdx].selectedCat=cat;renderReview();}
-
-function confirmReview(){
-  const item=reviewQueue[reviewIdx];if(!item.selectedCat)return;
+function confirmMerchantReview(){
+  const item=merchantQueue[merchantIdx];if(!item.selectedCat)return;
   merchantRules[item.mk]=item.selectedCat;saveRules();
-  allTxns.filter(t=>getMK(t.desc)===item.mk).forEach(t=>{t.cat=item.selectedCat;t.needsReview=false;t.confident=true;});
-  reviewIdx++;updateBadges();renderReview();
+  allTxns.filter(t=>getMK(t.desc)===item.mk).forEach(t=>{t.cat=item.selectedCat;t.needsReview=false;t.txnReview=false;t.confident=true;});
+  merchantIdx++;updateBadges();renderMerchantReview();
 }
 
-function skipReview(){
-  const item=reviewQueue[reviewIdx];askLater.add(item.mk);saveRules();
-  reviewIdx++;updateBadges();renderReview();
+function skipMerchantToTxnReview(){
+  // Move this merchant's transactions to the txn-by-txn queue
+  const item=merchantQueue[merchantIdx];
+  askLater.add(item.mk);saveRules();
+  allTxns.filter(t=>getMK(t.desc)===item.mk&&t.needsReview).forEach(t=>{t.txnReview=true;});
+  // Rebuild txn queue to include newly added transactions
+  txnQueue=buildTxnQueue(allTxns);
+  txnQueueIdx=0;
+  merchantIdx++;updateBadges();renderMerchantReview();
+}
+
+// ── Transaction-by-transaction review ─────────────────────────────────────
+function renderTxnReview(){
+  // Find next unreviewed txn
+  const pending=allTxns.filter(t=>t.needsReview&&t.txnReview);
+  if(pending.length===0){
+    document.getElementById('txnReviewQueue').style.display='none';
+    document.getElementById('txnReviewDone').style.display='block';
+    updateBadges();renderDashboard();return;
+  }
+  document.getElementById('txnReviewQueue').style.display='block';
+  document.getElementById('txnReviewDone').style.display='none';
+  const total=txnQueue.length;
+  const done=txnQueue.filter(t=>!t.needsReview||!t.txnReview).length;
+  const pct=total>0?Math.round(done/total*100):0;
+  document.getElementById('txnProgressFill').style.width=pct+'%';
+  document.getElementById('txnProgressLabel').textContent=`${done} of ${total} transactions reviewed`;
+  const t=pending[0];
+  const catBtns=CATS.map(c=>`<button class="cat-btn" style="" onclick="confirmTxnReview(${t.id},'${c.id}')">${c.label}</button>`).join('');
+  document.getElementById('txnCard').innerHTML=`
+    <div class="review-eyebrow">Transaction review — ${pending.length} remaining</div>
+    <div class="txn-card-date">${t.date}</div>
+    <div class="txn-card-desc">${t.desc}</div>
+    <div class="txn-card-amount ${t.amount<0?'neg':'pos'}">${t.amount<0?'-':'+'}&dollar;${Math.abs(t.amount).toFixed(2)}</div>
+    <div class="txn-card-meta">This is transaction-specific — your choice only applies to this one transaction</div>
+    <input class="note-field" placeholder="Add a note (e.g. 'cheer payment' or 'birthday gift')…" id="txnNoteField" value="${t.note||''}">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Which bucket is this?</div>
+    <div class="cat-grid">${catBtns}</div>
+    <div class="custom-row">
+      <input class="custom-input" id="txnCustomInput" placeholder="Or type a new category name…" onkeydown="if(event.key==='Enter')addTxnCustomCat(${t.id})">
+      <button class="btn btn-secondary" onclick="addTxnCustomCat(${t.id})" style="white-space:nowrap;padding:7px 14px;font-size:12px">+ Add</button>
+    </div>
+    <div class="review-actions">
+      <button class="btn btn-secondary" onclick="skipTxnReview(${t.id})">Skip for now</button>
+    </div>`;
+}
+
+function confirmTxnReview(id, cat){
+  const t=allTxns.find(x=>x.id===id);if(!t)return;
+  const noteField=document.getElementById('txnNoteField');
+  t.cat=cat;t.needsReview=false;t.txnReview=false;
+  if(noteField)t.note=noteField.value.trim();
+  updateBadges();renderTxnReview();
+}
+
+function addTxnCustomCat(id){
+  const input=document.getElementById('txnCustomInput');
+  const name=input.value.trim();if(!name)return;
+  const cid=name.toLowerCase().replace(/[^a-z0-9]/g,'_').substring(0,20)+'_'+Date.now().toString(36);
+  CATS.push({id:cid,label:name,color:randColor()});
+  saveCustomCats();populateCatFilter();
+  confirmTxnReview(id,cid);
+}
+
+function skipTxnReview(id){
+  const t=allTxns.find(x=>x.id===id);
+  if(t){t.txnReview=false;} // remove from queue but keep needsReview
+  updateBadges();renderTxnReview();
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
 function populateMonths(){
   const months=new Set();
-  allTxns.forEach(t=>{
-    const p=t.date.split('/');
-    if(p.length>=2)months.add(`${p[2]||'25'}-${p[0].padStart(2,'0')}`);
-  });
+  allTxns.forEach(t=>{const p=t.date.split('/');if(p.length>=2)months.add(`${p[2]||'25'}-${p[0].padStart(2,'0')}`);});
   const sorted=[...months].sort();
   const sel=document.getElementById('monthSel');
   sel.innerHTML='<option value="all">All months</option>'+sorted.map(m=>{
@@ -565,12 +614,7 @@ function renderDashboard(){
   const catF=document.getElementById('catFilter').value;
   const typeF=document.getElementById('typeFilter').value;
   let txns=allTxns;
-  if(month!=='all'){
-    txns=txns.filter(t=>{
-      const p=t.date.split('/');
-      return`${p[2]||'25'}-${p[0].padStart(2,'0')}`===month;
-    });
-  }
+  if(month!=='all'){txns=txns.filter(t=>{const p=t.date.split('/');return`${p[2]||'25'}-${p[0].padStart(2,'0')}`===month;});}
   if(search)txns=txns.filter(t=>t.desc.toLowerCase().includes(search)||t.note.toLowerCase().includes(search));
   if(catF!=='all')txns=txns.filter(t=>t.cat===catF);
   if(typeF==='expense')txns=txns.filter(t=>t.amount<0);
@@ -584,9 +628,9 @@ function renderDashboard(){
   document.getElementById('mSpend').textContent='-'+fmt(spend);
   const ne=document.getElementById('mNet');ne.textContent=(net>=0?'':'-')+fmt(net);ne.className='metric-value '+(net>=0?'pos':'neg');
   document.getElementById('mCount').textContent=txns.length.toLocaleString();
-  const nr=txns.filter(t=>t.needsReview).length;
+  const nr=allTxns.filter(t=>t.needsReview).length;
   const nrEl=document.getElementById('unreviewedNote');
-  if(nr>0){nrEl.style.display='block';nrEl.textContent=`${nr} transactions still need review`;}else nrEl.style.display='none';
+  if(nr>0){nrEl.style.display='block';nrEl.textContent=`${nr} transactions still need review — tap to continue`;}else nrEl.style.display='none';
   const catTotals={};CATS.forEach(c=>catTotals[c.id]=0);
   txns.filter(t=>t.amount<0).forEach(t=>{catTotals[t.cat]=(catTotals[t.cat]||0)+Math.abs(t.amount);});
   const sorted=CATS.filter(c=>c.id!=='income').map(c=>({...c,total:catTotals[c.id]||0,count:txns.filter(t=>t.cat===c.id).length})).filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
@@ -606,7 +650,7 @@ function renderDashboard(){
       <span class="txn-date">${t.date}</span>
       <div class="txn-dot" style="background:${catMap[t.cat]?.color||'#6b7280'}"></div>
       <span class="txn-desc" title="${t.desc}">${t.desc}</span>
-      ${t.needsReview?'<span class="review-flag">review</span>':''}
+      ${t.needsReview?`<span class="review-flag" onclick="reviewThisTxn(${t.id})">review</span>`:''}
       <input class="txn-note" placeholder="note…" value="${t.note}" onchange="setNote(${t.id},this.value)">
       <select class="txn-cat" onchange="changeTxnCat(${t.id},this.value)">${CATS.map(c=>`<option value="${c.id}"${c.id===t.cat?' selected':''}>${c.label}</option>`).join('')}</select>
       <span class="txn-amt ${t.amount<0?'neg':'pos'}">${t.amount<0?'-':'+'}${fmt(t.amount)}</span>
@@ -617,6 +661,12 @@ function renderDashboard(){
   document.getElementById('nextBtn').disabled=page>=totalPages-1;
 }
 
+function reviewThisTxn(id){
+  const t=allTxns.find(x=>x.id===id);
+  if(t){t.txnReview=true;txnQueue=buildTxnQueue(allTxns);txnQueueIdx=0;}
+  showTab('txnreview');renderTxnReview();
+}
+
 function setActiveCat(cat){activeCat=cat;page=0;renderDashboard();}
 function changePage(d){page+=d;renderDashboard();}
 function setNote(id,note){const t=allTxns.find(t=>t.id===id);if(t)t.note=note;}
@@ -624,14 +674,14 @@ function setNote(id,note){const t=allTxns.find(t=>t.id===id);if(t)t.note=note;}
 function changeTxnCat(id,newCat){
   const catMap=getCatMap();
   const txn=allTxns.find(t=>t.id===id);if(!txn)return;
-  txn.cat=newCat;txn.needsReview=false;
+  txn.cat=newCat;txn.needsReview=false;txn.txnReview=false;
   const mk=getMK(txn.desc);
-  if(confirm(`Save "${getCanon(txn.desc).substring(0,30)}" → ${catMap[newCat]?.label} as a permanent rule?\n\nOK = apply to all matching transactions\nCancel = just this one`)){
+  if(confirm(`Save "${getCanon(txn.desc).substring(0,30)}" → ${catMap[newCat]?.label} as a permanent rule?\n\nOK = apply to ALL matching transactions\nCancel = just this one transaction`)){
     merchantRules[mk]=newCat;saveRules();
-    allTxns.filter(t=>getMK(t.desc)===mk).forEach(t=>{t.cat=newCat;t.needsReview=false;});
+    allTxns.filter(t=>getMK(t.desc)===mk).forEach(t=>{t.cat=newCat;t.needsReview=false;t.txnReview=false;});
     document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
   }
-  renderDashboard();
+  updateBadges();renderDashboard();
 }
 
 // ── Rules screen ──────────────────────────────────────────────────────────
@@ -661,15 +711,15 @@ function showTab(tab){
   document.getElementById('screen-'+tab).classList.add('active');
   if(tab==='dashboard')renderDashboard();
   if(tab==='rules')renderRules();
-  if(tab==='review')renderReview();
+  if(tab==='review')renderMerchantReview();
+  if(tab==='txnreview')renderTxnReview();
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('fileIn').addEventListener('change',e=>{
     const f=e.target.files[0];if(!f)return;
-    const r=new FileReader();r.onload=ev=>loadFile(ev.target.result);r.readAsText(f);
-    e.target.value='';
+    const r=new FileReader();r.onload=ev=>loadFile(ev.target.result);r.readAsText(f);e.target.value='';
   });
   document.getElementById('rulesFileIn').addEventListener('change',e=>{
     const f=e.target.files[0];if(!f)return;
