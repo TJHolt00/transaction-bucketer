@@ -495,7 +495,8 @@ function renderMerchantReview(){
     </div>
     <div class="review-actions">
       <button class="btn btn-primary" onclick="confirmMerchantReview()" ${!item.selectedCat?'disabled':''}>Save rule &amp; continue →</button>
-      <button class="btn btn-secondary" onclick="skipMerchantToTxnReview()">Review transaction by transaction</button>
+      <button class="btn btn-secondary" onclick="skipMerchantToTxnReview()">Review one by one</button>
+      <button class="btn-ghost" onclick="askMeLaterMerchant()" style="font-size:12px;color:var(--text2);background:none;border:none;cursor:pointer;padding:8px 4px">Ask me later</button>
     </div>`;
 }
 
@@ -561,7 +562,7 @@ function renderTxnReview(){
       <button class="btn btn-secondary" onclick="addTxnCustomCat(${t.id})" style="white-space:nowrap;padding:7px 14px;font-size:12px">+ Add</button>
     </div>
     <div class="review-actions">
-      <button class="btn btn-secondary" onclick="skipTxnReview(${t.id})">Skip for now</button>
+      <button class="btn btn-secondary" onclick="skipTxnReview(${t.id})">Ask me later (come back to this)</button>
     </div>`;
 }
 
@@ -582,9 +583,15 @@ function addTxnCustomCat(id){
   confirmTxnReview(id,cid);
 }
 
+function askMeLaterMerchant(){
+  // Skip entirely for now — stays in merchant queue for next session
+  merchantIdx++;updateBadges();renderMerchantReview();
+}
+
 function skipTxnReview(id){
   const t=allTxns.find(x=>x.id===id);
-  if(t){t.txnReview=false;} // remove from queue but keep needsReview
+  // Move to end of queue instead of removing
+if(t){const idx=allTxns.indexOf(t);if(idx>-1){allTxns.splice(idx,1);allTxns.push(t);}}
   updateBadges();renderTxnReview();
 }
 
