@@ -252,6 +252,8 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 
   <!-- RULES -->
   <div class="screen" id="screen-rules">
+    <div class="section-label" style="margin-bottom:12px">Custom categories</div>
+    <div id="customCatsList" style="margin-bottom:24px"></div>
     <div class="section-label" style="margin-bottom:12px">Saved merchant rules — applied automatically on every import</div>
     <div id="rulesList"></div>
   </div>
@@ -488,12 +490,7 @@ function loadSavedTxns(){
 function clearAllData(){
   if(!confirm("Clear all saved transactions? Your merchant rules will be kept.\n\nThis cannot be undone."))return;
   localStorage.removeItem("txn_data");
-  allTxns=[];merchantQueue=[];txnQueue=[];merchantIdx=0;txnQueueIdx=0;
-  page=0;activeCat="all";
-  document.getElementById("importStatus").textContent="";
-  populateMonths();populateCatFilter();
-  updateBadges();
-  showTab("import");
+  window.location.reload();
 }
 
 function updateBadges(){
