@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Transaction Bucketer</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -20,7 +21,6 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .badge.warn{background:#451a00;color:#fbbf24}
 .badge.info{background:#0c2340;color:#66c2fa}
 .screen{display:none}.screen.active{display:block}
-/* Sync bar */
 .sync-bar{display:flex;gap:8px;margin-bottom:16px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);flex-wrap:wrap;align-items:center}
 .sync-bar-label{font-size:12px;color:var(--text2);flex:1;min-width:120px}
 .btn-sm{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s}
@@ -28,14 +28,12 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .btn-export:hover{border-color:var(--text2)}
 .btn-import-r{background:var(--surface2);color:var(--accent);border:1px solid var(--accent)}
 .btn-import-r:hover{background:#0c2340}
-/* Upload */
 .upload-zone{border:1.5px dashed var(--border);border-radius:var(--radius);padding:48px 24px;text-align:center;cursor:pointer;transition:border-color .15s}
 .upload-zone:hover{border-color:var(--accent)}
 .upload-zone h2{font-size:16px;font-weight:500;margin-bottom:8px}
 .upload-zone p{font-size:13px;color:var(--text2);margin-bottom:4px}
 .format-note{margin-top:12px;font-size:11px;color:var(--text2);background:var(--surface2);border-radius:8px;padding:8px 12px;display:inline-block;text-align:left}
 .status-msg{margin-top:16px;font-size:13px;color:var(--text2);text-align:center}
-/* Buttons */
 .btn{padding:8px 18px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
 .btn-primary{background:var(--accent);color:#000;border:none}
 .btn-primary:hover{background:#89d4ff}
@@ -44,12 +42,10 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .btn-secondary:hover{border-color:var(--text2)}
 .btn-danger{background:none;border:1px solid var(--border);color:var(--text2);font-size:11px;padding:3px 8px;border-radius:6px;cursor:pointer}
 .btn-danger:hover{border-color:var(--neg);color:var(--neg)}
-/* Progress */
 .progress-wrap{margin-bottom:20px}
 .progress-label{font-size:12px;color:var(--text2);text-align:center;margin-bottom:6px}
 .progress-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
 .progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
-/* Merchant review card */
 .review-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:600px;margin:0 auto}
 .review-eyebrow{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
 .review-name{font-size:20px;font-weight:600;margin-bottom:4px}
@@ -58,7 +54,6 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .sample-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)}
 .sample-row:last-child{border:none}
 .sample-desc{color:var(--text2);flex:1;margin-right:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* Transaction review card */
 .txn-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:600px;margin:0 auto}
 .txn-card-amount{font-size:32px;font-weight:700;margin:8px 0}
 .txn-card-amount.neg{color:var(--neg)}
@@ -68,12 +63,10 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .txn-card-meta{font-size:12px;color:var(--text2);margin-bottom:20px}
 .note-field{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none;margin-bottom:16px}
 .note-field:focus{border-color:var(--accent)}
-/* Cat grid */
 .cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .cat-btn{padding:9px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;text-align:center;transition:all .15s}
 .cat-btn:hover{border-color:var(--text2)}
 .cat-btn.selected{font-weight:500}
-/* Custom category */
 .custom-row{display:flex;gap:8px;margin-bottom:16px;align-items:center}
 .custom-input{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
 .custom-input:focus{border-color:var(--accent)}
@@ -82,14 +75,12 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .review-done{text-align:center;padding:48px 24px}
 .review-done h2{font-size:18px;font-weight:500;margin-bottom:8px}
 .review-done p{font-size:13px;color:var(--text2);margin-bottom:24px}
-/* Metrics */
 .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:24px}
 .metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
 .metric-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
 .metric-value{font-size:22px;font-weight:600}
 .metric-value.pos{color:var(--pos)}
 .metric-value.neg{color:var(--neg)}
-/* Dashboard */
 .dash-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
 .dash-top select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
 .dash-top select option{background:var(--surface2)}
@@ -106,13 +97,11 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .cat-row-right{text-align:right}
 .cat-row-amt{font-size:12px;font-weight:500}
 .cat-row-ct{font-size:10px;color:var(--text2)}
-/* Controls */
 .controls{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .controls input,.controls select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
 .controls input{flex:1;min-width:140px}
 .controls input:focus,.controls select:focus{border-color:var(--accent)}
 .controls select option{background:var(--surface2)}
-/* Transaction rows */
 .txn-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);margin-bottom:3px;background:var(--surface)}
 .txn-row.needs-review{border-color:#854f0b;background:#1a1200}
 .txn-date{font-size:11px;color:var(--text2);min-width:46px;flex-shrink:0}
@@ -133,32 +122,73 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .page-row button{padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:11px}
 .page-row button:disabled{opacity:.35;cursor:default}
 .unreviewed-note{font-size:12px;color:var(--warn);cursor:pointer;text-decoration:underline}
-/* Rules */
 .rule-row{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:8px;border:1px solid var(--border);margin-bottom:4px;background:var(--surface)}
 .rule-merchant{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rule-arrow{color:var(--text2);font-size:12px}
 .rule-cat{font-size:12px;font-weight:500}
+.auth-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:36px 32px;width:100%;max-width:380px}
+.auth-card h2{font-size:18px;font-weight:600;margin-bottom:4px}
+.auth-card .auth-sub{font-size:13px;color:var(--text2);margin-bottom:24px}
+.auth-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.auth-field label{font-size:12px;color:var(--text2)}
+.auth-field input{padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px;outline:none}
+.auth-field input:focus{border-color:var(--accent)}
+.auth-error{font-size:12px;color:var(--neg);margin-bottom:12px;display:none;padding:8px 10px;background:#2a0a0a;border:1px solid #4a1010;border-radius:6px}
+.sync-status{font-size:11px;color:var(--text2);font-weight:500}
+.sync-status.live{color:var(--pos)}
+/* Party mode styles */
+#partyOverlay{pointer-events:none;position:fixed;inset:0;z-index:8998}
+.party-disco{position:fixed;inset:0;z-index:8997;background:radial-gradient(circle at 20% 20%, rgba(255,0,128,0.12), transparent 8%), radial-gradient(circle at 80% 80%, rgba(0,200,255,0.10), transparent 10%);mix-blend-mode:screen;pointer-events:none;animation:disco 2400ms linear infinite}
+.party-spark{position:absolute;width:10px;height:14px;border-radius:3px;opacity:0.95;will-change:transform;animation-name:fall;animation-timing-function:linear;animation-iteration-count:infinite}
+@keyframes fall{0%{transform:translateY(-10vh) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(360deg);opacity:0}}
+@keyframes disco{0%{filter:hue-rotate(0deg)}50%{filter:hue-rotate(90deg)}100%{filter:hue-rotate(0deg)}}
+.party-active body{transition:background-color .4s}
 </style>
 </head>
 <body>
-<div class="app">
+
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <h2>Transaction Bucketer</h2>
+    <p class="auth-sub">Sign in to access your shared account</p>
+    <div class="auth-field">
+      <label>Email</label>
+      <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
+    </div>
+    <div id="authError" class="auth-error"></div>
+    <button class="btn btn-primary" onclick="signIn()" id="signInBtn" style="width:100%;padding:10px">Sign in</button>
+    <button class="btn btn-secondary" onclick="enterLocalMode()" style="width:100%;padding:10px;margin-top:10px">Continue without login</button>
+    <p class="auth-sub" style="margin-top:12px">Local mode stores data in this browser only and works without Supabase credentials.</p>
+  </div>
+</div>
+
+<div class="app" id="mainApp" style="display:none">
   <h1>Transaction Bucketer</h1>
   <p class="subtitle">Import your Huntington CSV, review merchants once, get clean spending data forever.</p>
+  <button id="partyBtn" class="btn btn-secondary" title="Toggle Party Mode" style="position:fixed;right:18px;bottom:18px;z-index:9999;padding:10px 12px;border-radius:999px;font-size:16px">🎉 Party</button>
+  <div id="partyOverlay" aria-hidden="true"></div>
   <div class="tabs">
     <button class="tab active" onclick="showTab('import')" id="tab-import">Import</button>
     <button class="tab" onclick="showTab('review')" id="tab-review">Merchants<span class="badge warn" id="reviewBadge" style="display:none">0</span></button>
     <button class="tab" onclick="showTab('txnreview')" id="tab-txnreview">Transactions<span class="badge warn" id="txnReviewBadge" style="display:none">0</span></button>
     <button class="tab" onclick="showTab('dashboard')" id="tab-dashboard">Dashboard</button>
     <button class="tab" onclick="showTab('rules')" id="tab-rules">Rules<span class="badge info" id="rulesBadge">0</span></button>
+    <button class="tab" onclick="showTab('ai')" id="tab-ai">Ask AI</button>
   </div>
 
-  <!-- IMPORT -->
   <div class="screen active" id="screen-import">
     <div class="sync-bar">
-      <span class="sync-bar-label">Sync rules &amp; categories across devices</span>
+      <span class="sync-bar-label" id="syncLabel">Signed in</span>
+      <span class="sync-status" id="syncStatus">● connecting…</span>
       <button class="btn-sm btn-export" onclick="exportRules()">⬇ Export rules</button>
       <label class="btn-sm btn-import-r" style="cursor:pointer" for="rulesFileIn">⬆ Import rules</label>
       <button class="btn-sm" onclick="clearAllData()" style="background:none;border:1px solid var(--neg);color:var(--neg);padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer">✕ Clear data</button>
+      <button class="btn-sm" onclick="signOut()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer">Sign out</button>
       <input type="file" id="rulesFileIn" accept=".json" style="display:none">
     </div>
     <div class="upload-zone" onclick="document.getElementById('fileIn').click()">
@@ -175,7 +205,6 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     <div class="status-msg" id="importStatus"></div>
   </div>
 
-  <!-- MERCHANT REVIEW -->
   <div class="screen" id="screen-review">
     <div id="merchantReviewDone" class="review-done" style="display:none">
       <h2>All merchants reviewed</h2>
@@ -191,7 +220,6 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     </div>
   </div>
 
-  <!-- TRANSACTION REVIEW -->
   <div class="screen" id="screen-txnreview">
     <div id="txnReviewDone" class="review-done" style="display:none">
       <h2>All transactions reviewed</h2>
@@ -207,7 +235,6 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     </div>
   </div>
 
-  <!-- DASHBOARD -->
   <div class="screen" id="screen-dashboard">
     <div class="dash-top">
       <select id="monthSel"></select>
@@ -250,17 +277,55 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     </div>
   </div>
 
-  <!-- RULES -->
   <div class="screen" id="screen-rules">
     <div class="section-label" style="margin-bottom:12px">Custom categories</div>
     <div id="customCatsList" style="margin-bottom:24px"></div>
     <div class="section-label" style="margin-bottom:12px">Saved merchant rules — applied automatically on every import</div>
     <div id="rulesList"></div>
   </div>
+
+  <!-- ASK AI -->
+  <div class="screen" id="screen-ai">
+    <div class="sync-bar" style="flex-direction:column;align-items:stretch;gap:10px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="sync-bar-label" style="flex:0 0 auto">Anthropic API key</span>
+        <input type="password" id="aiKeyInput" placeholder="sk-ant-..." style="flex:1;min-width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;outline:none">
+        <button class="btn-sm btn-export" onclick="saveAIKey()">Save key</button>
+        <button class="btn-sm" onclick="clearAIKey()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:6px 14px;border-radius:7px;font-size:12px;cursor:pointer">Clear</button>
+      </div>
+      <div style="font-size:11px;color:var(--text2)">Stored only in this browser (localStorage). Get a key at <span style="color:var(--accent)">console.anthropic.com</span> → Settings → API Keys. Add ~$5 of credits for thousands of questions.</div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:12px;color:var(--text2)">Ask about:</span>
+        <select id="aiMonthSel" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;outline:none"></select>
+        <span class="sync-status" id="aiStatus" style="margin-left:auto;font-size:11px;color:var(--text2)"></span>
+      </div>
+      <textarea id="aiQuestion" placeholder="Examples:
+• Where can I cut $200/month?
+• How much did I spend on coffee this year?
+• List my subscriptions and flag any that look unused
+• What's my biggest spending category and why?" style="width:100%;min-height:100px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none;font-family:inherit;resize:vertical;margin-bottom:12px"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-primary" id="aiAskBtn" onclick="askAI()">Ask Claude</button>
+        <select id="aiModelSel" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;outline:none">
+          <option value="claude-opus-4-7">Opus 4.7 (best, $)</option>
+          <option value="claude-sonnet-4-6" selected>Sonnet 4.6 (balanced, recommended)</option>
+          <option value="claude-haiku-4-5">Haiku 4.5 (cheapest, fastest)</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="aiResponse" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;white-space:pre-wrap;font-size:14px;line-height:1.6;display:none"></div>
+  </div>
 </div>
 
 <script>
-// ── Categories ────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://myepbyzcizaigtrblyzx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_MNjjUEGVKAMEzTqxZnEqGQ_YT0YYqfq';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 let CATS=[
   {id:'groceries',label:'Groceries',color:'#1d9e75'},
   {id:'dining',label:'Dining / Restaurants',color:'#fb923c'},
@@ -284,52 +349,174 @@ let CATS=[
 const DEFAULT_IDS=CATS.map(c=>c.id);
 function randColor(){return`hsl(${Math.floor(Math.random()*360)},60%,60%)`;}
 function getCatMap(){return Object.fromEntries(CATS.map(c=>[c.id,c]));}
+let localOnly=false;
+const LS_TXNS='bucketer_txns';
+const LS_RULES='bucketer_rules';
+const LS_CATS='bucketer_custom_cats';
 
-// ── Persistence ───────────────────────────────────────────────────────────
 let merchantRules={},askLater=new Set();
-try{merchantRules=JSON.parse(localStorage.getItem('txn_rules')||'{}');}catch(e){}
-try{askLater=new Set(JSON.parse(localStorage.getItem('txn_asklater')||'[]'));}catch(e){}
-try{const sc=JSON.parse(localStorage.getItem('txn_custom_cats')||'[]');CATS=[...CATS,...sc];}catch(e){}
-function saveRules(){
-  try{localStorage.setItem('txn_rules',JSON.stringify(merchantRules));}catch(e){}
-  try{localStorage.setItem('txn_asklater',JSON.stringify([...askLater]));}catch(e){}
+
+function txnToRow(t){
+  return{id:t.id,date:t.date,description:t.desc,amount:t.amount,cat:t.cat||'other',note:t.note||'',needs_review:!!t.needsReview,txn_review:!!t.txnReview,confident:!!t.confident,format:t.format||'app'};
 }
-function saveCustomCats(){
-  try{localStorage.setItem('txn_custom_cats',JSON.stringify(CATS.filter(c=>!DEFAULT_IDS.includes(c.id))));}catch(e){}
+function rowToTxn(r){
+  return{id:r.id,date:r.date,desc:r.description,amount:parseFloat(r.amount),cat:r.cat||'other',note:r.note||'',needsReview:r.needs_review,txnReview:r.txn_review,confident:r.confident,format:r.format||'app'};
 }
 
-// ── Export / Import rules ─────────────────────────────────────────────────
+async function loadAllData(){
+  if(localOnly){
+    const txns=JSON.parse(localStorage.getItem(LS_TXNS)||'[]');
+    const rules=JSON.parse(localStorage.getItem(LS_RULES)||'{}');
+    const customCats=JSON.parse(localStorage.getItem(LS_CATS)||'[]');
+    allTxns=(txns||[]).map(rowToTxn);
+    merchantRules={};askLater=new Set();
+    Object.entries(rules||{}).forEach(([keyword,bucket])=>{
+      if(bucket==='__ask_later__')askLater.add(keyword);
+      else merchantRules[keyword]=bucket;
+    });
+    if(Array.isArray(customCats)){
+      customCats.forEach(c=>{if(!CATS.find(x=>x.id===c.id))CATS.push(c);});
+    }
+    return;
+  }
+  const[txnRes,ruleRes,settingRes]=await Promise.all([
+    db.from('transactions').select('*').order('inserted_at').range(0, 20000),
+    db.from('merchant_rules').select('*').range(0, 20000),
+    db.from('app_settings').select('*').eq('key','custom_cats').range(0, 20000)
+  ]);
+  if(txnRes.error)console.error('load txns',txnRes.error);
+  if(ruleRes.error)console.error('load rules',ruleRes.error);
+  if(settingRes.error)console.error('load settings',settingRes.error);
+  allTxns=(txnRes.data||[]).map(rowToTxn);
+  merchantRules={};askLater=new Set();
+  (ruleRes.data||[]).forEach(r=>{
+    if(r.bucket==='__ask_later__')askLater.add(r.keyword);
+    else merchantRules[r.keyword]=r.bucket;
+  });
+  const cs=settingRes.data&&settingRes.data[0];
+  if(cs&&Array.isArray(cs.value)){
+    cs.value.forEach(c=>{if(!CATS.find(x=>x.id===c.id))CATS.push(c);});
+  }
+}
+
+async function upsertTxns(txnsArr){
+  if(!txnsArr||!txnsArr.length)return;
+  if(localOnly){
+    const existing=Object.fromEntries((JSON.parse(localStorage.getItem(LS_TXNS)||'[]')||[]).map(r=>[r.id,r]));
+    txnsArr.forEach(t=>{existing[t.id]=txnToRow(t);});
+    localStorage.setItem(LS_TXNS,JSON.stringify(Object.values(existing)));
+    return;
+  }
+  const{error}=await db.from('transactions').upsert(txnsArr.map(txnToRow));
+  if(error)console.error('upsertTxns',error);
+}
+async function upsertRule(mk,cat){
+  if(localOnly){
+    const rules=JSON.parse(localStorage.getItem(LS_RULES)||'{}');
+    rules[mk]=cat;
+    localStorage.setItem(LS_RULES,JSON.stringify(rules));
+    if(cat==='__ask_later__'){askLater.add(mk);}else{merchantRules[mk]=cat;askLater.delete(mk);}
+    const rb=document.getElementById('rulesBadge');
+    if(rb)rb.textContent=Object.keys(merchantRules).length;
+    return;
+  }
+  const{error}=await db.from('merchant_rules').upsert({keyword:mk,bucket:cat});
+  if(error)console.error('upsertRule',error);
+  if(cat==='__ask_later__'){askLater.add(mk);}else{merchantRules[mk]=cat;askLater.delete(mk);}
+  const rb=document.getElementById('rulesBadge');
+  if(rb)rb.textContent=Object.keys(merchantRules).length;
+}
+async function removeRule(mk){
+  if(localOnly){
+    const rules=JSON.parse(localStorage.getItem(LS_RULES)||'{}');
+    delete rules[mk];
+    localStorage.setItem(LS_RULES,JSON.stringify(rules));
+    delete merchantRules[mk];askLater.delete(mk);
+    return;
+  }
+  const{error}=await db.from('merchant_rules').delete().eq('keyword',mk);
+  if(error)console.error('removeRule',error);
+  delete merchantRules[mk];askLater.delete(mk);
+}
+async function saveCustomCats(){
+  const custom=CATS.filter(c=>!DEFAULT_IDS.includes(c.id));
+  if(localOnly){
+    localStorage.setItem(LS_CATS,JSON.stringify(custom));
+    return;
+  }
+  const{error}=await db.from('app_settings').upsert({key:'custom_cats',value:custom,updated_at:new Date().toISOString()});
+  if(error)console.error('saveCustomCats',error);
+}
+
+async function signIn(){
+  const email=document.getElementById('authEmail').value.trim();
+  const password=document.getElementById('authPassword').value;
+  const errEl=document.getElementById('authError');
+  const btn=document.getElementById('signInBtn');
+  errEl.style.display='none';
+  btn.disabled=true;btn.textContent='Signing in…';
+  const{error}=await db.auth.signInWithPassword({email,password});
+  if(error){
+    errEl.textContent=error.message;errEl.style.display='block';
+    btn.disabled=false;btn.textContent='Sign in';
+    return;
+  }
+  localOnly=false;
+  await showApp();
+}
+async function enterLocalMode(){
+  localOnly=true;
+  await showApp();
+}
+async function signOut(){
+  if(localOnly){
+    location.reload();
+    return;
+  }
+  await db.auth.signOut();
+  location.reload();
+}
+async function showApp(){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('mainApp').style.display='block';
+  if(localOnly){
+    document.getElementById('syncLabel').textContent='Local mode';
+  } else {
+    const{data:{session}}=await db.auth.getSession();
+    if(session)document.getElementById('syncLabel').textContent='Signed in as '+session.user.email;
+  }
+  await initApp();
+}
+
 function exportRules(){
   const data={rules:merchantRules,askLater:[...askLater],customCats:CATS.filter(c=>!DEFAULT_IDS.includes(c.id))};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='bucketer_rules.json';a.click();
 }
 
-// ── Keyword rules ─────────────────────────────────────────────────────────
 const KW_RULES=[
   {kw:['kroger fuel','sheetz','marathon','speedway','sunoco','kwik fill','circle k','bp ','shell ','exxon','mobil','chevron','pilot travel','loves travel','casey','getgo','united dairy f','udf','flying j','bjs fuel','certified oil'],cat:'gas'},
   {kw:['kroger','meijer','aldi','whole foods','trader joe','giant eagle','asian international','royo bread','wal-mart','walmart','fresh thyme','sprouts','carfagna','food lion','bjs wholesale','costco whse','wm superc','supreme fresh'],cat:'groceries'},
-  {kw:['mcdonald','wendy','taco bell','panda express','skyline chili','bob evans','bibibop','chipotle','panera','pizza hut','donatos','jets pizza','scrambler','roosters','graeters','burger king','arby','chick-fil','popeye','sonic drive','five guys','culver','mi sombrero','surve','firebirds','la matraca','indigo atlanta','polaris north','polaris salad','polaris s dyn','amk jpmc','jpmc polaris','365 market','galena brewing','applebees','jersey mikes','jimmy johns','kfc ','raising cane','huey magoo','condado tacos','rusty bucket','buffalo wild','texas roadhouse','chicken salad chick','dairy queen','daves hot chicken','tropical smoothie','el vaquero','senor antonio','taquero','brown derby','famous famiglia','beer barrel','pies pints','pastimes pub','sand bar','standardized brew','nostalgia brew','district 13','katzinger','koble greek','las margaritas','hyderabad house','panchos tacos','harry buffalo','levy@','levy restaurants','levy1psc','uep chuan','farmer fridge','clear fork dairy','creme corner','orange leaf','whits frozen','coldstone','cinnabon','doc popcorn','whistle keg','birdie books','scioto valley coff','meehans','doordash','dd doordash','dd citybarbe','dd pandaexpr','buckeye pho','harbor house','tst '],cat:'dining'},
+  {kw:['mcdonald','wendy','taco bell','panda express','chipotle','panera','pizza hut','donatos','jets pizza','burger king','arby','chick-fil','popeye','sonic drive','five guys','culver','jersey mikes','jimmy johns','kfc ','raising cane','huey magoo','condado tacos','dairy queen','daves hot chicken','tropical smoothie','skyline chili','bibibop','graeters','mi sombrero','famous famiglia','coldstone','cinnabon','orange leaf','whits frozen','doc popcorn','doordash','dd doordash','dd citybarbe','dd pandaexpr'],cat:'fastfood'},
+  {kw:['bob evans','scrambler','roosters','applebees','rusty bucket','buffalo wild','texas roadhouse','chicken salad chick','el vaquero','firebirds','la matraca','senor antonio','taquero','brown derby','harry buffalo','beer barrel','pies pints','pastimes pub','sand bar','standardized brew','nostalgia brew','district 13','katzinger','koble greek','las margaritas','hyderabad house','panchos tacos','galena brewing','indigo atlanta','polaris north','polaris salad','polaris s dyn','amk jpmc','jpmc polaris','365 market','levy@','levy restaurants','levy1psc','uep chuan','farmer fridge','clear fork dairy','creme corner','whistle keg','birdie books','scioto valley coff','meehans','buckeye pho','harbor house','surve','tst '],cat:'dining'},
   {kw:['starbucks','coffee','dunkin','crimson cup','dutch bros','biggby','tim horton','travelin tom','gathering grounds'],cat:'coffee'},
   {kw:['columbia gas','spectrum spectrum','local waste','goodleap','at&t','verizon','t-mobile','duke energy','aep ','firstenergy','dominion energy','ring basic','nexgreen','wwp'],cat:'utilities'},
   {kw:['crosscountry mortgage','mortgage'],cat:'housing'},
   {kw:['jpmorgan chase b payroll','payroll dd','direct deposit'],cat:'income'},
-  {kw:['wells fargo auto draft','napa store','napa auto','autozone','advance auto','jiffy lube','valvoline','firestone','goodyear','midas','boyds tir','pond tire','roush honda','delaware cjdr','car wash','sun classics car'],cat:'auto'},
+  {kw:['wells fargo auto draft','chrysler capital','progressive','prog direct','napa store','napa auto','autozone','advance auto','jiffy lube','valvoline','firestone','goodyear','midas','boyds tir','pond tire','roush honda','delaware cjdr','car wash','sun classics car'],cat:'auto'},
   {kw:['netflix','hulu','spotify','kindle','prime video','disney plus','disneyplus','apple.com/bill','microsoft','filter subscription','getepic','dualtone','paramount','peacock','hbo','youtube premium','audible','nintendo','playstation','xbox game','pc game pass','steamgames','boxcast','frontier a8'],cat:'subscriptions'},
-  {kw:['aspca','petsmart','petco','lllreptile','pet supplies','banfield','annehurst veterinary','sunbury veterinary','big walnut animal','tractor supply','muttsandco'],cat:'pet'},
+  {kw:['aspca','petsmart','petco','chewy','lllreptile','pet supplies','banfield','annehurst veterinary','sunbury veterinary','big walnut animal','tractor supply','muttsandco'],cat:'pet'},
   {kw:['home depot','homedepot','lowes','ace hardware','mnrd','amer home shield','scherzinger pest','sunbury ace','menards','grace cleaners','westerville cleaners'],cat:'home'},
   {kw:['lume','billie','manucurist','sash bag','juggy','shay hamper','ulta','sephora','great clips','sport clips','regis','hair','nail','salon','spa','barber','gloss luxe','gloss kayleigh','luxe beauty','kenneth','cosmetics co'],cat:'personal'},
-  {kw:['internet tfr','internal transfer','capital one mobile','capital one pmt','discover card','citi card','synchrony','barclays','jpm chase 401k','overdraft fee','non-huntington atm','international transaction fee','huntington bp merch','pp federal credit'],cat:'transfers'},
+  {kw:['internet tfr','internal transfer','capital one mobile','capital one pmt','discover card','citi card','synchrony','barclays','jpm chase 401k','dept education','comenity','overdraft fee','non-huntington atm','international transaction fee','huntington bp merch','pp federal credit'],cat:'transfers'},
   {kw:['minuteclinic','copc','achieve psychology','caitlyn brown','medione','urgent care','ohio health','mount carmel','nationwide children','optometrist','vision works','lenscrafters','anthony dental','vision professiona','associates in central','loy ohiohealth','dncss nationwide','discount drug','tommy nobis','well within'],cat:'healthcare'},
   {kw:['big walnut soccer','gotsoccer','club ohio soccer','americheer','resolute athletic','payschl','music&arts','music arts','steppin high','allstar cheer','cheer athletic','ymca','planet fitness','anytime fitness','snap fitness','la fitness','us all star fed','primo cheer','primoticketing','ohsaa','bishop watterson','bw athletic','lakewood athletic','cougar corner','pickerington band','sc big walnut','pep rally apparel','rebel athletic','rebel athleti','spooky nook','rockin jump','ctlp rockin','arnold sports','kalahari','hobart arena','medieval times','soccer plus','soccer village','penn beech','inspired driving','gdex'],cat:'kids'},
   {kw:['wdw ','disney on ice','columbus zoo','ssa columbus','ssa zoombezi','zoombezi','amc online','cinemark','uec premier','tm lumineers','tm outlaw','tm wallflowers','spirit airlines','avis ','theparkingspot','cmh parking','laz parking','gccc goodale','columbus commons park','play it games','dragon lair','go calendars','boardwalk paradise','ron jon','skywheel','surf sun','landshark','mexico pavilion','trex orlando','crystal arts','tez natl','hilton hotels','holiday inn','kalahari resorts','sq amusement','sq adventure','sq concessions','sq columbus','sq fairgrounds','wright concessions','vendor 13','special event china','sq merchandise','fandango'],cat:'other'},
   {kw:['pmt ohio','pmt oplates','pmt bureau motor','2cool traffic','2levy'],cat:'other'},
-  {kw:['dollar tree','dollar tr','dollar general','five belo','goodwill','village discount','tjmaxx','t j maxx','marshalls','ross ','burlington','old navy','gap ','kohls','jcpenney','macys','nordstrom','express ','hollister','carter','bath and body','joann','michaels stores','ikea','best buy','gamestop','barnes','famous footwea','dsw','dicks sporting','dickssportinggoods','lenovo','br factory','altar state','bargain beachwear','tanger outlets','ye olde pro','elaracraft','creativejamco','oracle ring','the comfy','navage nasal','raiven','peach truck','wittichs candy','disneystore','adidas','asics','puma','crocs','american eagle','target','amazon','amzn','ebay','etsy','chewy','wayfair','costco','five below','bath body','sq outlet','sq lemonade','sq money','sq grown','sq tater','sq dippin','sq fingers','sq frozen'],cat:'shopping'},
+  {kw:['dollar tree','dollar tr','dollar general','five belo','goodwill','village discount','tjmaxx','t j maxx','marshalls','ross ','burlington','old navy','gap ','kohls','jcpenney','macys','nordstrom','express ','hollister','carter','bath and body','joann','michaels stores','ikea','best buy','gamestop','barnes','famous footwea','dsw','dicks sporting','dickssportinggoods','lenovo','br factory','altar state','bargain beachwear','tanger outlets','ye olde pro','elaracraft','creativejamco','oracle ring','the comfy','navage nasal','raiven','peach truck','wittichs candy','disneystore','adidas','asics','puma','crocs','american eagle','target','amazon','amzn','ebay','etsy','wayfair','costco','five below','bath body','sq outlet','sq lemonade','sq money','sq grown','sq tater','sq dippin','sq fingers','sq frozen'],cat:'shopping'},
 ];
 
 const ALWAYS_REVIEW=['venmo','paypal ','cashapp','afterpay','klarna','affirm','zelle'];
-
-// ── Merchant key & canon name ─────────────────────────────────────────────
 const MEANINGFUL_SUFFIXES=['fuel','pharmacy','clinic','online','express','market','fresh','plus','pro','premium','prime','video','music','dental','optical','pet','auto','gas','deli','cafe','bistro','grill','bar','drive','mobile','wireless'];
 
 function getMK(desc){
@@ -372,7 +559,6 @@ function autoAssign(desc){
   return{cat:'other',confident:false,needsReview:true};
 }
 
-// ── CSV parsing ───────────────────────────────────────────────────────────
 function parseCSVLine(line){
   const cols=[];let cur='',inQ=false;
   for(const ch of line){
@@ -423,12 +609,11 @@ function parseCsv(text){
     }
     if(!dateStr||!desc||isNaN(amt))continue;
     const{cat,confident,needsReview,txnReview}=autoAssign(desc);
-    txns.push({id:i,date:dateStr,desc,amount:amt,cat,note:'',needsReview:!!needsReview,txnReview:!!txnReview,confident:!!confident,format});
+    txns.push({date:dateStr,desc,amount:amt,cat,note:'',needsReview:!!needsReview,txnReview:!!txnReview,confident:!!confident,format});
   }
   return txns;
 }
 
-// ── State ─────────────────────────────────────────────────────────────────
 let allTxns=[],merchantQueue=[],merchantIdx=0;
 let txnQueue=[],txnQueueIdx=0;
 let page=0,activeCat='all',pieChart=null;
@@ -449,14 +634,16 @@ function buildTxnQueue(txns){
   return txns.filter(t=>t.needsReview&&t.txnReview);
 }
 
-function loadFile(text){
+async function loadFile(text){
   const newTxns=parseCsv(text);
   if(!newTxns.length){document.getElementById('importStatus').textContent='No transactions found — check the file format.';return;}
-  // Merge: deduplicate by date+desc+amount so multiple accounts don't double-count
   const existingKeys=new Set(allTxns.map(t=>`${t.date}|${t.desc}|${t.amount}`));
-  const toAdd=newTxns.filter(t=>!existingKeys.has(`${t.date}|${t.desc}|${t.amount}`));
+  const toAdd=newTxns
+    .filter(t=>!existingKeys.has(`${t.date}|${t.desc}|${t.amount}`))
+    .map(t=>({...t,id:crypto.randomUUID()}));
   allTxns=[...allTxns,...toAdd];
-  saveTxns();
+  document.getElementById('importStatus').textContent=`Saving ${toAdd.length} transactions…`;
+  await upsertTxns(toAdd);
   merchantQueue=buildMerchantQueue(allTxns);
   txnQueue=buildTxnQueue(allTxns);
   txnQueueIdx=0;merchantIdx=0;
@@ -471,25 +658,11 @@ function loadFile(text){
   else{showTab('dashboard');renderDashboard();}
 }
 
-function saveTxns(){
-  try{
-    // Compress by only saving what we need
-    const slim=allTxns.map(t=>({id:t.id,date:t.date,desc:t.desc,amount:t.amount,cat:t.cat,note:t.note,needsReview:t.needsReview,txnReview:t.txnReview,confident:t.confident,format:t.format}));
-    localStorage.setItem("txn_data",JSON.stringify(slim));
-  }catch(e){console.warn("Storage full — try clearing old data",e);}
-}
-
-function loadSavedTxns(){
-  try{
-    const raw=localStorage.getItem("txn_data");
-    if(!raw)return[];
-    return JSON.parse(raw);
-  }catch(e){return[];}
-}
-
-function clearAllData(){
-  if(!confirm("Clear all saved transactions? Your merchant rules will be kept.\n\nThis cannot be undone."))return;
-  localStorage.removeItem("txn_data");
+async function clearAllData(){
+  if(!confirm("Clear ALL saved transactions for the shared account? Your merchant rules will be kept.\n\nThis cannot be undone."))return;
+  const{error}=await db.from('transactions').delete().gte('inserted_at','1900-01-01');
+  if(error){alert('Failed to clear: '+error.message);return;}
+  allTxns=[];
   window.location.reload();
 }
 
@@ -503,7 +676,6 @@ function updateBadges(){
   document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
 }
 
-// ── Merchant review ───────────────────────────────────────────────────────
 function renderMerchantReview(){
   const rem=merchantQueue.length-merchantIdx;
   if(rem<=0){
@@ -539,37 +711,37 @@ function renderMerchantReview(){
 
 function selectMerchantCat(cat){merchantQueue[merchantIdx].selectedCat=cat;renderMerchantReview();}
 
-function addMerchantCustomCat(){
+async function addMerchantCustomCat(){
   const input=document.getElementById('merchantCustomInput');
   const name=input.value.trim();if(!name)return;
   const id=name.toLowerCase().replace(/[^a-z0-9]/g,'_').substring(0,20)+'_'+Date.now().toString(36);
   CATS.push({id,label:name,color:randColor()});
-  saveCustomCats();populateCatFilter();
+  await saveCustomCats();populateCatFilter();
   merchantQueue[merchantIdx].selectedCat=id;
   input.value='';renderMerchantReview();
 }
 
-function confirmMerchantReview(){
+async function confirmMerchantReview(){
   const item=merchantQueue[merchantIdx];if(!item.selectedCat)return;
-  merchantRules[item.mk]=item.selectedCat;saveRules();
-  allTxns.filter(t=>getMK(t.desc)===item.mk).forEach(t=>{t.cat=item.selectedCat;t.needsReview=false;t.txnReview=false;t.confident=true;});
-  saveTxns();merchantIdx++;updateBadges();renderMerchantReview();
+  await upsertRule(item.mk,item.selectedCat);
+  const changed=allTxns.filter(t=>getMK(t.desc)===item.mk);
+  changed.forEach(t=>{t.cat=item.selectedCat;t.needsReview=false;t.txnReview=false;t.confident=true;});
+  await upsertTxns(changed);
+  merchantIdx++;updateBadges();renderMerchantReview();
 }
 
-function skipMerchantToTxnReview(){
-  // Move this merchant's transactions to the txn-by-txn queue
+async function skipMerchantToTxnReview(){
   const item=merchantQueue[merchantIdx];
-  askLater.add(item.mk);saveRules();
-  allTxns.filter(t=>getMK(t.desc)===item.mk&&t.needsReview).forEach(t=>{t.txnReview=true;});
-  // Rebuild txn queue to include newly added transactions
+  await upsertRule(item.mk,'__ask_later__');
+  const changed=allTxns.filter(t=>getMK(t.desc)===item.mk&&t.needsReview);
+  changed.forEach(t=>{t.txnReview=true;});
+  await upsertTxns(changed);
   txnQueue=buildTxnQueue(allTxns);
   txnQueueIdx=0;
   merchantIdx++;updateBadges();renderMerchantReview();
 }
 
-// ── Transaction-by-transaction review ─────────────────────────────────────
 function renderTxnReview(){
-  // Find next unreviewed txn
   const pending=allTxns.filter(t=>t.needsReview&&t.txnReview);
   if(pending.length===0){
     document.getElementById('txnReviewQueue').style.display='none';
@@ -584,7 +756,7 @@ function renderTxnReview(){
   document.getElementById('txnProgressFill').style.width=pct+'%';
   document.getElementById('txnProgressLabel').textContent=`${done} of ${total} transactions reviewed`;
   const t=pending[0];
-  const catBtns=CATS.map(c=>`<button class="cat-btn" style="" onclick="confirmTxnReview(${t.id},'${c.id}')">${c.label}</button>`).join('');
+  const catBtns=CATS.map(c=>`<button class="cat-btn" onclick="confirmTxnReview('${t.id}','${c.id}')">${c.label}</button>`).join('');
   document.getElementById('txnCard').innerHTML=`
     <div class="review-eyebrow">Transaction review — ${pending.length} remaining</div>
     <div class="txn-card-date">${t.date}</div>
@@ -595,44 +767,42 @@ function renderTxnReview(){
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Which bucket is this?</div>
     <div class="cat-grid">${catBtns}</div>
     <div class="custom-row">
-      <input class="custom-input" id="txnCustomInput" placeholder="Or type a new category name…" onkeydown="if(event.key==='Enter')addTxnCustomCat(${t.id})">
-      <button class="btn btn-secondary" onclick="addTxnCustomCat(${t.id})" style="white-space:nowrap;padding:7px 14px;font-size:12px">+ Add</button>
+      <input class="custom-input" id="txnCustomInput" placeholder="Or type a new category name…" onkeydown="if(event.key==='Enter')addTxnCustomCat('${t.id}')">
+      <button class="btn btn-secondary" onclick="addTxnCustomCat('${t.id}')" style="white-space:nowrap;padding:7px 14px;font-size:12px">+ Add</button>
     </div>
     <div class="review-actions">
-      <button class="btn btn-secondary" onclick="skipTxnReview(${t.id})">Ask me later (come back to this)</button>
+      <button class="btn btn-secondary" onclick="skipTxnReview('${t.id}')">Ask me later (come back to this)</button>
     </div>`;
 }
 
-function confirmTxnReview(id, cat){
+async function confirmTxnReview(id,cat){
   const t=allTxns.find(x=>x.id===id);if(!t)return;
   const noteField=document.getElementById('txnNoteField');
   t.cat=cat;t.needsReview=false;t.txnReview=false;
   if(noteField)t.note=noteField.value.trim();
-  saveTxns();updateBadges();renderTxnReview();
+  await upsertTxns([t]);
+  updateBadges();renderTxnReview();
 }
 
-function addTxnCustomCat(id){
+async function addTxnCustomCat(id){
   const input=document.getElementById('txnCustomInput');
   const name=input.value.trim();if(!name)return;
   const cid=name.toLowerCase().replace(/[^a-z0-9]/g,'_').substring(0,20)+'_'+Date.now().toString(36);
   CATS.push({id:cid,label:name,color:randColor()});
-  saveCustomCats();populateCatFilter();
-  confirmTxnReview(id,cid);
+  await saveCustomCats();populateCatFilter();
+  await confirmTxnReview(id,cid);
 }
 
 function askMeLaterMerchant(){
-  // Skip entirely for now — stays in merchant queue for next session
   merchantIdx++;updateBadges();renderMerchantReview();
 }
 
 function skipTxnReview(id){
   const t=allTxns.find(x=>x.id===id);
-  // Move to end of queue instead of removing
-if(t){const idx=allTxns.indexOf(t);if(idx>-1){allTxns.splice(idx,1);allTxns.push(t);}}
+  if(t){const idx=allTxns.indexOf(t);if(idx>-1){allTxns.splice(idx,1);allTxns.push(t);}}
   updateBadges();renderTxnReview();
 }
 
-// ── Dashboard ─────────────────────────────────────────────────────────────
 function populateMonths(){
   const months=new Set();
   allTxns.forEach(t=>{const p=t.date.split('/');if(p.length>=2)months.add(`${p[2]||'25'}-${p[0].padStart(2,'0')}`);});
@@ -694,9 +864,9 @@ function renderDashboard(){
       <span class="txn-date">${t.date}</span>
       <div class="txn-dot" style="background:${catMap[t.cat]?.color||'#6b7280'}"></div>
       <span class="txn-desc" title="${t.desc}">${t.desc}</span>
-      ${t.needsReview?`<span class="review-flag" onclick="reviewThisTxn(${t.id})">review</span>`:''}
-      <input class="txn-note" placeholder="note…" value="${t.note}" onchange="setNote(${t.id},this.value)">
-      <select class="txn-cat" onchange="changeTxnCat(${t.id},this.value)">${CATS.map(c=>`<option value="${c.id}"${c.id===t.cat?' selected':''}>${c.label}</option>`).join('')}</select>
+      ${t.needsReview?`<span class="review-flag" onclick="reviewThisTxn('${t.id}')">review</span>`:''}
+      <input class="txn-note" placeholder="note…" value="${t.note}" onchange="setNote('${t.id}',this.value)">
+      <select class="txn-cat" onchange="changeTxnCat('${t.id}',this.value)">${CATS.map(c=>`<option value="${c.id}"${c.id===t.cat?' selected':''}>${c.label}</option>`).join('')}</select>
       <span class="txn-amt ${t.amount<0?'neg':'pos'}">${t.amount<0?'-':'+'}${fmt(t.amount)}</span>
     </div>`).join(''):'<div class="empty">No transactions match your filters</div>';
   const total=txns.length,totalPages=Math.ceil(total/PER_PAGE);
@@ -713,23 +883,28 @@ function reviewThisTxn(id){
 
 function setActiveCat(cat){activeCat=cat;page=0;renderDashboard();}
 function changePage(d){page+=d;renderDashboard();}
-function setNote(id,note){const t=allTxns.find(t=>t.id===id);if(t)t.note=note;}
+async function setNote(id,note){
+  const t=allTxns.find(t=>t.id===id);if(!t)return;
+  t.note=note;
+  await upsertTxns([t]);
+}
 
-function changeTxnCat(id,newCat){
+async function changeTxnCat(id,newCat){
   const catMap=getCatMap();
   const txn=allTxns.find(t=>t.id===id);if(!txn)return;
   txn.cat=newCat;txn.needsReview=false;txn.txnReview=false;
   const mk=getMK(txn.desc);
   if(confirm(`Save "${getCanon(txn.desc).substring(0,30)}" → ${catMap[newCat]?.label} as a permanent rule?\n\nOK = apply to ALL matching transactions\nCancel = just this one transaction`)){
-    merchantRules[mk]=newCat;saveRules();
-    allTxns.filter(t=>getMK(t.desc)===mk).forEach(t=>{t.cat=newCat;t.needsReview=false;t.txnReview=false;});
-    document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
+    await upsertRule(mk,newCat);
+    const changed=allTxns.filter(t=>getMK(t.desc)===mk);
+    changed.forEach(t=>{t.cat=newCat;t.needsReview=false;t.txnReview=false;});
+    await upsertTxns(changed);
+  }else{
+    await upsertTxns([txn]);
   }
-  saveTxns();updateBadges();renderDashboard();
+  updateBadges();renderDashboard();
 }
 
-
-// ── Export functions ──────────────────────────────────────────────────────
 function getExportData(){
   const month=document.getElementById('monthSel').value;
   let txns=allTxns;
@@ -740,14 +915,11 @@ function getExportData(){
 function exportCSV(){
   const{txns,month}=getExportData();
   const catMap=getCatMap();
-
-  // Sheet 1: Category summary
   const catTotals={};
   CATS.forEach(c=>catTotals[c.id]=0);
   txns.filter(t=>t.amount<0).forEach(t=>{catTotals[t.cat]=(catTotals[t.cat]||0)+Math.abs(t.amount);});
   const income=txns.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
   const spend=txns.filter(t=>t.amount<0).reduce((s,t)=>s+t.amount,0);
-
   let csv='SPENDING SUMMARY\n';
   csv+=`Period,${month==='all'?'All time':month}\n`;
   csv+=`Total Income,$${income.toFixed(2)}\n`;
@@ -756,8 +928,7 @@ function exportCSV(){
   csv+='\nCategory,Amount,Transactions\n';
   CATS.filter(c=>c.id!=='income'&&catTotals[c.id]>0)
     .sort((a,b)=>catTotals[b.id]-catTotals[a.id])
-    .forEach(c=>{ csv+=`${c.label},$${catTotals[c.id].toFixed(2)},${txns.filter(t=>t.cat===c.id).length}\n`; });
-
+    .forEach(c=>{csv+=`${c.label},$${catTotals[c.id].toFixed(2)},${txns.filter(t=>t.cat===c.id).length}\n`;});
   csv+='\n\nFULL TRANSACTION LIST\n';
   csv+='Date,Description,Category,Amount,Note\n';
   txns.sort((a,b)=>a.date.localeCompare(b.date)).forEach(t=>{
@@ -765,7 +936,6 @@ function exportCSV(){
     const note=(t.note||'').replace(/,/g,' ');
     csv+=`${t.date},"${desc}",${catMap[t.cat]?.label||t.cat},${t.amount.toFixed(2)},"${note}"\n`;
   });
-
   const blob=new Blob([csv],{type:'text/csv'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -776,7 +946,6 @@ function exportCSV(){
 function exportPDF(){
   const{txns,month}=getExportData();
   const catMap=getCatMap();
-
   const catTotals={};
   CATS.forEach(c=>catTotals[c.id]=0);
   txns.filter(t=>t.amount<0).forEach(t=>{catTotals[t.cat]=(catTotals[t.cat]||0)+Math.abs(t.amount);});
@@ -785,7 +954,6 @@ function exportPDF(){
   const net=income+spend;
   const sorted=CATS.filter(c=>c.id!=='income'&&catTotals[c.id]>0).sort((a,b)=>catTotals[b.id]-catTotals[a.id]);
   const label=month==='all'?'All Time':month;
-
   const catRows=sorted.map(c=>`
     <tr>
       <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;">
@@ -795,7 +963,6 @@ function exportPDF(){
       <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600">$${catTotals[c.id].toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}</td>
       <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:right;color:#6b7280">${txns.filter(t=>t.cat===c.id).length}</td>
     </tr>`).join('');
-
   const txnRows=txns.sort((a,b)=>a.date.localeCompare(b.date)).map(t=>`
     <tr>
       <td style="padding:5px 8px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">${t.date}</td>
@@ -806,7 +973,6 @@ function exportPDF(){
       <td style="padding:5px 8px;border-bottom:1px solid #f3f4f6;font-size:11px;text-align:right;font-weight:500;color:${t.amount<0?'#ef4444':'#10b981'}">${t.amount<0?'-':'+'}&dollar;${Math.abs(t.amount).toFixed(2)}</td>
       <td style="padding:5px 8px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">${t.note||''}</td>
     </tr>`).join('');
-
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Spending Report — ${label}</title>
   <style>
@@ -837,13 +1003,11 @@ function exportPDF(){
   <table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th class="right">Amount</th><th>Note</th></tr></thead><tbody>${txnRows}</tbody></table>
   <script>window.onload=()=>{window.print();}<\/script>
   </body></html>`;
-
   const blob=new Blob([html],{type:'text/html'});
   const url=URL.createObjectURL(blob);
   window.open(url,'_blank');
 }
 
-// ── Rules screen ──────────────────────────────────────────────────────────
 function renderRules(){
   const catMap=getCatMap();
   const entries=Object.entries(merchantRules).sort((a,b)=>a[0].localeCompare(b[0]));
@@ -856,13 +1020,12 @@ function renderRules(){
     </div>`).join(''):'<div class="empty">No rules saved yet.</div>';
 }
 
-function deleteRule(mk){
-  delete merchantRules[mk];saveRules();
+async function deleteRule(mk){
+  await removeRule(mk);
   document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
   renderRules();
 }
 
-// ── Tab navigation ────────────────────────────────────────────────────────
 function showTab(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -872,23 +1035,184 @@ function showTab(tab){
   if(tab==='rules')renderRules();
   if(tab==='review')renderMerchantReview();
   if(tab==='txnreview')renderTxnReview();
+  if(tab==='ai')initAITab();
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded',()=>{
-  // Auto-load saved transactions
-  const saved=loadSavedTxns();
-  if(saved.length>0){
-    allTxns=saved;
-    merchantQueue=buildMerchantQueue(allTxns);
-    txnQueue=buildTxnQueue(allTxns);
-    updateBadges();populateMonths();populateCatFilter();
-    const pending=merchantQueue.length+(txnQueue.filter(t=>t.needsReview&&t.txnReview).length);
-    document.getElementById('importStatus').textContent=`${allTxns.length.toLocaleString()} transactions loaded from last session.${pending>0?' '+pending+' still need review.':''}`;
-    if(merchantQueue.length>0){showTab('review');renderMerchantReview();}
-    else if(txnQueue.filter(t=>t.needsReview&&t.txnReview).length>0){showTab('txnreview');renderTxnReview();}
-    else{showTab('dashboard');renderDashboard();}
+// ── Ask AI ────────────────────────────────────────────────────────────────
+function saveAIKey(){
+  const k=document.getElementById('aiKeyInput').value.trim();
+  if(!k){alert('Paste your Anthropic API key first.');return;}
+  if(!k.startsWith('sk-ant-')){if(!confirm('That key does not look like an Anthropic API key (should start with sk-ant-). Save anyway?'))return;}
+  localStorage.setItem('anthropic_api_key',k);
+  document.getElementById('aiStatus').textContent='● key saved';
+  document.getElementById('aiStatus').style.color='var(--pos)';
+}
+function clearAIKey(){
+  localStorage.removeItem('anthropic_api_key');
+  document.getElementById('aiKeyInput').value='';
+  document.getElementById('aiStatus').textContent='● no key';
+  document.getElementById('aiStatus').style.color='var(--text2)';
+}
+function getAIKey(){return localStorage.getItem('anthropic_api_key')||'';}
+
+function initAITab(){
+  const sel=document.getElementById('aiMonthSel');
+  sel.innerHTML=document.getElementById('monthSel').innerHTML;
+  const k=getAIKey();
+  const status=document.getElementById('aiStatus');
+  if(k){
+    document.getElementById('aiKeyInput').value=k;
+    status.textContent='● key saved';status.style.color='var(--pos)';
+  }else{
+    status.textContent='● no key';status.style.color='var(--text2)';
   }
+}
+
+function getAITxnContext(){
+  const month=document.getElementById('aiMonthSel').value;
+  const catMap=getCatMap();
+  let txns=allTxns;
+  if(month!=='all'){txns=txns.filter(t=>{const p=t.date.split('/');return`${p[2]||'25'}-${p[0].padStart(2,'0')}`===month;});}
+  const income=txns.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
+  const spend=txns.filter(t=>t.amount<0).reduce((s,t)=>s+t.amount,0);
+  const catTotals={};
+  txns.forEach(t=>{const c=catMap[t.cat]?.label||t.cat;catTotals[c]=(catTotals[c]||0)+t.amount;});
+  const lines=txns
+    .sort((a,b)=>a.date.localeCompare(b.date))
+    .map(t=>`${t.date} | ${(catMap[t.cat]?.label||t.cat).padEnd(20)} | ${t.amount.toFixed(2).padStart(9)} | ${t.desc.substring(0,40)}${t.note?' ['+t.note+']':''}`);
+  const period=month==='all'?'All time':month;
+  return `PERIOD: ${period}
+TRANSACTION COUNT: ${txns.length}
+TOTAL INCOME: $${income.toFixed(2)}
+TOTAL SPENDING: $${Math.abs(spend).toFixed(2)}
+NET: $${(income+spend).toFixed(2)}
+
+SPENDING BY CATEGORY:
+${Object.entries(catTotals).sort((a,b)=>a[1]-b[1]).map(([c,v])=>`  ${c}: $${v.toFixed(2)}`).join('\n')}
+
+ALL TRANSACTIONS (date | category | amount | description [note]):
+${lines.join('\n')}`;
+}
+
+async function askAI(){
+  const key=getAIKey();
+  if(!key){alert('Paste your Anthropic API key above and click Save key first.');return;}
+  const question=document.getElementById('aiQuestion').value.trim();
+  if(!question){alert('Type a question first.');return;}
+  const model=document.getElementById('aiModelSel').value;
+  const btn=document.getElementById('aiAskBtn');
+  const resp=document.getElementById('aiResponse');
+  const status=document.getElementById('aiStatus');
+  btn.disabled=true;btn.textContent='Thinking…';
+  resp.style.display='block';resp.textContent='';
+  status.textContent='● calling Claude…';status.style.color='var(--text2)';
+
+  const txnContext=getAITxnContext();
+  const body={
+    model,
+    max_tokens:2048,
+    system:[
+      {type:'text',text:"You are a personal finance analyst helping the user understand their spending. Be concise, use specific dollar amounts and merchant names from their data, and call out anything notable. Use plain text formatting — no markdown headers or bold."},
+      {type:'text',text:'USER FINANCIAL DATA:\n\n'+txnContext,cache_control:{type:'ephemeral'}}
+    ],
+    messages:[{role:'user',content:question}]
+  };
+
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'content-type':'application/json',
+        'x-api-key':key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify(body)
+    });
+    const data=await r.json();
+    if(!r.ok){
+      resp.textContent='Error: '+(data.error?.message||JSON.stringify(data));
+      status.textContent='● error';status.style.color='var(--neg)';
+    }else{
+      const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+      resp.textContent=text;
+      const u=data.usage||{};
+      const cached=u.cache_read_input_tokens||0;
+      const written=u.cache_creation_input_tokens||0;
+      const fresh=u.input_tokens||0;
+      const out=u.output_tokens||0;
+      let costNote='';
+      if(cached>0)costNote=` · ${cached.toLocaleString()} tokens served from cache (~90% discount)`;
+      else if(written>0)costNote=` · ${written.toLocaleString()} tokens cached for next question`;
+      status.textContent=`● ${fresh+cached} in / ${out} out${costNote}`;
+      status.style.color='var(--pos)';
+    }
+  }catch(e){
+    resp.textContent='Network error: '+e.message;
+    status.textContent='● error';status.style.color='var(--neg)';
+  }
+  btn.disabled=false;btn.textContent='Ask Claude';
+}
+
+function renderCurrentTab(){
+  const active=document.querySelector('.tab.active');
+  if(!active)return;
+  const tab=active.id.replace('tab-','');
+  if(tab==='dashboard')renderDashboard();
+  else if(tab==='review'){merchantQueue=buildMerchantQueue(allTxns);renderMerchantReview();}
+  else if(tab==='txnreview'){txnQueue=buildTxnQueue(allTxns);renderTxnReview();}
+  else if(tab==='rules')renderRules();
+}
+
+function setupRealtime(){
+  const status=document.getElementById('syncStatus');
+  db.channel('shared-data')
+    .on('postgres_changes',{event:'*',schema:'public',table:'transactions'},payload=>{
+      if(payload.eventType==='INSERT'||payload.eventType==='UPDATE'){
+        const t=rowToTxn(payload.new);
+        const idx=allTxns.findIndex(x=>x.id===t.id);
+        if(idx>=0)allTxns[idx]=t;else allTxns.push(t);
+      }else if(payload.eventType==='DELETE'){
+        allTxns=allTxns.filter(x=>x.id!==payload.old.id);
+      }
+      updateBadges();populateMonths();populateCatFilter();
+      renderCurrentTab();
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'merchant_rules'},payload=>{
+      const row=payload.new||payload.old;
+      if(!row)return;
+      if(payload.eventType==='DELETE'){
+        delete merchantRules[row.keyword];askLater.delete(row.keyword);
+      }else{
+        if(row.bucket==='__ask_later__'){askLater.add(row.keyword);}
+        else{merchantRules[row.keyword]=row.bucket;askLater.delete(row.keyword);}
+      }
+      updateBadges();renderCurrentTab();
+    })
+    .subscribe(s=>{
+      if(s==='SUBSCRIBED'){status.textContent='● live';status.classList.add('live');}
+      else status.textContent='● '+s.toLowerCase();
+    });
+}
+
+async function initApp(){
+  document.getElementById('importStatus').textContent='Loading your data…';
+  await loadAllData();
+  merchantQueue=buildMerchantQueue(allTxns);
+  txnQueue=buildTxnQueue(allTxns);
+  updateBadges();populateMonths();populateCatFilter();
+  const pending=merchantQueue.length+(txnQueue.filter(t=>t.needsReview&&t.txnReview).length);
+  document.getElementById('importStatus').textContent=allTxns.length>0
+    ?`${allTxns.length.toLocaleString()} transactions loaded.${pending>0?' '+pending+' still need review.':''}`
+    :'No transactions yet — import a CSV to get started.';
+  if(merchantQueue.length>0){showTab('review');renderMerchantReview();}
+  else if(txnQueue.filter(t=>t.needsReview&&t.txnReview).length>0){showTab('txnreview');renderTxnReview();}
+  else if(allTxns.length>0){showTab('dashboard');renderDashboard();}
+  document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
+  if(!localOnly) setupRealtime();
+}
+
+document.addEventListener('DOMContentLoaded',async()=>{
   document.getElementById('fileIn').addEventListener('change',e=>{
     const f=e.target.files[0];if(!f)return;
     const r=new FileReader();r.onload=ev=>loadFile(ev.target.result);r.readAsText(f);e.target.value='';
@@ -896,19 +1220,29 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('rulesFileIn').addEventListener('change',e=>{
     const f=e.target.files[0];if(!f)return;
     const r=new FileReader();
-    r.onload=ev=>{
+    r.onload=async ev=>{
       try{
         const data=JSON.parse(ev.target.result);
-        if(data.rules)Object.assign(merchantRules,data.rules);
-        if(data.askLater)data.askLater.forEach(k=>askLater.add(k));
+        if(data.rules)Object.entries(data.rules).forEach(([mk,cat])=>{merchantRules[mk]=cat;});
+        if(data.askLater)data.askLater.forEach(k=>{askLater.add(k);});
+        if(localOnly){
+          const rules=JSON.parse(localStorage.getItem(LS_RULES)||'{}');
+          if(data.rules)Object.entries(data.rules).forEach(([mk,cat])=>{rules[mk]=cat;});
+          if(data.askLater)data.askLater.forEach(k=>{rules[k]='__ask_later__';});
+          localStorage.setItem(LS_RULES,JSON.stringify(rules));
+        } else {
+          const upserts=[];
+          if(data.rules)Object.entries(data.rules).forEach(([mk,cat])=>{upserts.push({keyword:mk,bucket:cat});});
+          if(data.askLater)data.askLater.forEach(k=>{upserts.push({keyword:k,bucket:'__ask_later__'});});
+          if(upserts.length)await db.from('merchant_rules').upsert(upserts);
+        }
         if(data.customCats&&data.customCats.length){
           data.customCats.forEach(c=>{if(!CATS.find(x=>x.id===c.id))CATS.push(c);});
-          saveCustomCats();
+          await saveCustomCats();
         }
-        saveRules();
         document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
         alert(`Imported ${Object.keys(data.rules||{}).length} rules!`);
-      }catch(err){alert('Could not read rules file.');}
+      }catch(err){alert('Could not read rules file: '+err.message);}
     };
     r.readAsText(f);e.target.value='';
   });
@@ -917,7 +1251,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(el){el.addEventListener('change',()=>{page=0;renderDashboard();});}
   });
   document.getElementById('searchBox').addEventListener('input',()=>{page=0;renderDashboard();});
-  document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
   const uz=document.querySelector('.upload-zone');
   uz.addEventListener('dragover',e=>{e.preventDefault();uz.style.borderColor='var(--accent)';});
   uz.addEventListener('dragleave',()=>{uz.style.borderColor='';});
@@ -926,7 +1259,33 @@ document.addEventListener('DOMContentLoaded',()=>{
     const f=e.dataTransfer.files[0];if(!f)return;
     const r=new FileReader();r.onload=ev=>loadFile(ev.target.result);r.readAsText(f);
   });
+
+  const{data:{session}}=await db.auth.getSession();
+  if(session){await showApp();}
 });
+</script>
+<script>
+(function(){
+  const btn=document.getElementById('partyBtn');
+  const overlay=document.getElementById('partyOverlay');
+  if(!btn||!overlay)return;
+  let party=false;let audioCtx=null;let seqInterval=null;
+  btn.addEventListener('click',toggleParty);
+  function toggleParty(){party=!party;btn.textContent=party?'✖ Stop':'🎉 Party';if(party)startParty();else stopParty();}
+  function startParty(){
+    document.documentElement.classList.add('party-active');
+    const disco=document.createElement('div');disco.className='party-disco';disco.id='partyDisco';overlay.appendChild(disco);
+    for(let i=0;i<80;i++){const d=document.createElement('div');d.className='party-spark';d.style.left=(Math.random()*100)+'%';d.style.background=`hsl(${Math.floor(Math.random()*360)},70%,60%)`;const dur=1800+Math.random()*3200;d.style.animationDuration=dur+'ms';d.style.top=-(Math.random()*20)+'vh';overlay.appendChild(d);}
+    try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();const notes=[261.6,293.7,329.6,392,440,493.9,523.25];seqInterval=setInterval(()=>{const o=audioCtx.createOscillator();o.type='sawtooth';o.frequency.value=notes[Math.floor(Math.random()*notes.length)]*(Math.random()<0.5?1:0.5);const g=audioCtx.createGain();g.gain.value=0.001;o.connect(g);g.connect(audioCtx.destination);o.start();g.gain.exponentialRampToValueAtTime(0.06,audioCtx.currentTime+0.02);g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.6);setTimeout(()=>{try{o.stop();}catch(e){}o.disconnect();g.disconnect();},700);},180);}catch(e){console.warn('audio start failed',e);}
+  }
+  function stopParty(){
+    document.documentElement.classList.remove('party-active');
+    const disco=document.getElementById('partyDisco');if(disco)disco.remove();
+    if(seqInterval)clearInterval(seqInterval);seqInterval=null;
+    if(audioCtx){try{audioCtx.close();}catch(e){}audioCtx=null;}
+    const sparks=Array.from(document.querySelectorAll('.party-spark'));sparks.forEach(s=>s.remove());
+  }
+})();
 </script>
 </body>
 </html>
