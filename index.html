@@ -167,6 +167,23 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
   </div>
 </div>
 
+<div id="setPasswordScreen" class="auth-screen" style="display:none">
+  <div class="auth-card">
+    <h2>Set your password</h2>
+    <p class="auth-sub">Welcome! Choose a password to finish setting up your account.</p>
+    <div class="auth-field">
+      <label>New password</label>
+      <input type="password" id="newPassword" placeholder="At least 6 characters" autocomplete="new-password">
+    </div>
+    <div class="auth-field">
+      <label>Confirm password</label>
+      <input type="password" id="newPassword2" placeholder="Re-enter password" autocomplete="new-password" onkeydown="if(event.key==='Enter')setNewPassword()">
+    </div>
+    <div id="setPwError" class="auth-error"></div>
+    <button class="btn btn-primary" onclick="setNewPassword()" id="setPwBtn" style="width:100%;padding:10px">Set password &amp; continue</button>
+  </div>
+</div>
+
 <div class="app" id="mainApp" style="display:none">
   <h1>Transaction Bucketer</h1>
   <p class="subtitle">Import your Huntington CSV, review merchants once, get clean spending data forever.</p>
@@ -486,6 +503,27 @@ async function showApp(){
     if(session)document.getElementById('syncLabel').textContent='Signed in as '+session.user.email;
   }
   await initApp();
+}
+
+async function setNewPassword(){
+  const p1=document.getElementById('newPassword').value;
+  const p2=document.getElementById('newPassword2').value;
+  const err=document.getElementById('setPwError');
+  const btn=document.getElementById('setPwBtn');
+  err.style.display='none';
+  if(p1.length<6){err.textContent='Password must be at least 6 characters.';err.style.display='block';return;}
+  if(p1!==p2){err.textContent='Passwords do not match.';err.style.display='block';return;}
+  btn.disabled=true;btn.textContent='Saving…';
+  const{error}=await db.auth.updateUser({password:p1});
+  if(error){
+    err.textContent=error.message;err.style.display='block';
+    btn.disabled=false;btn.textContent='Set password & continue';
+    return;
+  }
+  history.replaceState(null,'',window.location.pathname);
+  document.getElementById('setPasswordScreen').style.display='none';
+  localOnly=false;
+  await showApp();
 }
 
 function exportRules(){
@@ -1259,6 +1297,18 @@ document.addEventListener('DOMContentLoaded',async()=>{
     const f=e.dataTransfer.files[0];if(!f)return;
     const r=new FileReader();r.onload=ev=>loadFile(ev.target.result);r.readAsText(f);
   });
+
+  // Detect invite / password-recovery links (arrive with a token in the URL hash)
+  const hashParams=new URLSearchParams(window.location.hash.replace(/^#/,''));
+  const linkType=hashParams.get('type');
+  if(linkType==='invite'||linkType==='recovery'||linkType==='signup'){
+    // supabase-js (detectSessionInUrl) establishes a temporary session from the token.
+    // Wait briefly for it, then prompt the invited user to set their password.
+    await db.auth.getSession();
+    document.getElementById('authScreen').style.display='none';
+    document.getElementById('setPasswordScreen').style.display='flex';
+    return;
+  }
 
   const{data:{session}}=await db.auth.getSession();
   if(session){await showApp();}
