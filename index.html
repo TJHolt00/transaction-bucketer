@@ -203,6 +203,8 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     <button class="tab" onclick="showTab('goals')" id="tab-goals">Savings Goals</button>
     <button class="tab" onclick="showTab('year')" id="tab-year">Year</button>
     <button class="tab" onclick="showTab('bills')" id="tab-bills">Bills</button>
+    <button class="tab" onclick="showTab('challenge')" id="tab-challenge">Challenge</button>
+    <button class="tab" onclick="showTab('forecast')" id="tab-forecast">Forecast</button>
     <button class="tab" onclick="showTab('rules')" id="tab-rules">Rules<span class="badge info" id="rulesBadge">0</span></button>
     <button class="tab" onclick="showTab('ai')" id="tab-ai">Ask AI</button>
   </div>
@@ -463,6 +465,48 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     </div>
   </div>
 
+  <div class="screen" id="screen-challenge">
+    <p class="subtitle" style="margin-bottom:16px">Small, gamified wins build momentum. Two classic challenges to keep saving fun.</p>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px">
+      <div class="section-label" style="margin-bottom:8px">52-Week Challenge</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Save $1 in week 1, $2 in week 2… up to $52. By week 52 you've banked <strong>$1,378</strong>.</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <span style="font-size:12px">I'm on week</span>
+        <input type="number" min="0" max="52" id="challengeWeek" onchange="updateChallenge('week',this.value)" style="width:70px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:13px;outline:none">
+      </div>
+      <div id="challenge52"></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+      <div class="section-label" style="margin-bottom:8px">No-Spend Streak</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Days in a row with zero non-essential spending. Beat your record.</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-secondary" onclick="updateChallenge('noSpend',(extrasState.challenge.noSpend||0)+1)">+1 day</button>
+        <button class="btn-danger" onclick="updateChallenge('noSpend',0)" style="padding:6px 12px">Reset</button>
+        <span id="challengeStreak" style="font-size:22px;font-weight:700;margin-left:8px"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-forecast">
+    <p class="subtitle" style="margin-bottom:16px">Once you're debt-free, this is what your money can become. A simple compound-growth projection — not investment advice.</p>
+    <div class="dash-layout">
+      <div>
+        <div class="section-label">Inputs</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <label style="font-size:12px;color:var(--text2)">Starting amount ($)<input type="number" id="fcInitial" onchange="updateForecast('initial',this.value)" style="display:block;width:100%;margin-top:3px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none"></label>
+          <label style="font-size:12px;color:var(--text2)">Monthly contribution ($)<input type="number" id="fcMonthly" onchange="updateForecast('monthly',this.value)" style="display:block;width:100%;margin-top:3px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none"></label>
+          <label style="font-size:12px;color:var(--text2)">Annual return (%)<input type="number" id="fcRoi" onchange="updateForecast('roi',this.value)" style="display:block;width:100%;margin-top:3px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none"></label>
+          <label style="font-size:12px;color:var(--text2)">Years<input type="number" id="fcYears" onchange="updateForecast('years',this.value)" style="display:block;width:100%;margin-top:3px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none"></label>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">Projection</div>
+        <div class="metrics" id="forecastMetrics" style="grid-template-columns:1fr"></div>
+        <div id="forecastBreakdown" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="screen" id="screen-rules">
     <div class="section-label" style="margin-bottom:12px">Custom categories</div>
     <div id="customCatsList" style="margin-bottom:24px"></div>
@@ -542,12 +586,14 @@ const APP_SETTING_NWS='nws_classes';
 const APP_SETTING_NETWORTH='net_worth';
 const APP_SETTING_GOALS='savings_goals';
 const APP_SETTING_BILLS='recurring_bills';
+const APP_SETTING_EXTRAS='extras';
 let budgetTargets={};
 let debtState={debts:[],strategy:'avalanche',extra:0};
 let nwsOverrides={};
 let netWorthState={assets:[],liabilities:[],snapshots:[]};
 let savingsGoals=[];
 let recurringBills=[];
+let extrasState={forecast:{initial:1000,monthly:300,roi:7,years:20},challenge:{week:0,noSpend:0}};
 const NWS_DEFAULT={groceries:'needs',gas:'needs',utilities:'needs',housing:'needs',healthcare:'needs',auto:'needs',home:'needs',pet:'needs',transfers:'savings',dining:'wants',fastfood:'wants',coffee:'wants',shopping:'wants',subscriptions:'wants',kids:'wants',personal:'wants',other:'wants'};
 function nwsClass(catId){return nwsOverrides[catId]||NWS_DEFAULT[catId]||'wants';}
 let merchantRules={},askLater=new Set();
@@ -563,7 +609,7 @@ async function loadAllData(){
   const [txnRes, ruleRes, settingRes] = await Promise.all([
     db.from('transactions').select('*').order('inserted_at').range(0, 20000),
     db.from('merchant_rules').select('*').range(0, 20000),
-    db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH,APP_SETTING_GOALS,APP_SETTING_BILLS])
+    db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH,APP_SETTING_GOALS,APP_SETTING_BILLS,APP_SETTING_EXTRAS])
   ]);
   if(txnRes.error)console.error('load txns',txnRes.error);
   if(ruleRes.error)console.error('load rules',ruleRes.error);
@@ -596,6 +642,9 @@ async function loadAllData(){
     }
     if(s.key===APP_SETTING_BILLS && Array.isArray(s.value)){
       recurringBills=s.value;
+    }
+    if(s.key===APP_SETTING_EXTRAS && s.value && typeof s.value==='object'){
+      extrasState={forecast:{...extrasState.forecast,...(s.value.forecast||{})},challenge:{...extrasState.challenge,...(s.value.challenge||{})}};
     }
   });
   ensureBudgetStructure();
@@ -637,6 +686,48 @@ async function saveDebtState(){
 async function saveNwsOverrides(){
   const{error}=await db.from('app_settings').upsert({key:APP_SETTING_NWS,value:nwsOverrides,updated_at:new Date().toISOString()});
   if(error)console.error('saveNwsOverrides',error);
+}
+
+// ── Challenge + Forecast (extras) ───────────────────────────────────────────
+async function saveExtras(){
+  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_EXTRAS,value:extrasState,updated_at:new Date().toISOString()});
+  if(error)console.error('saveExtras',error);
+}
+function updateChallenge(field,val){
+  extrasState.challenge[field]=parseFloat(val)||0;saveExtras();renderChallenge();
+}
+function renderChallenge(){
+  const wk=Math.max(0,Math.min(52,+extrasState.challenge.week||0));
+  document.getElementById('challengeWeek').value=extrasState.challenge.week||'';
+  const saved=wk*(wk+1)/2;
+  const thisWeek=wk>0&&wk<=52?wk:0;
+  document.getElementById('challenge52').innerHTML=`
+    <div style="height:12px;background:var(--surface2);border-radius:6px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${wk/52*100}%;background:var(--pos)"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px"><span>Banked so far: <strong style="color:var(--pos)">${fmt(saved)}</strong></span><span style="color:var(--text2)">${wk}/52 weeks · ${fmt(1378-saved)} to go</span></div>
+    ${thisWeek?`<div style="font-size:12px;color:var(--text2);margin-top:6px">This week, set aside <strong>$${thisWeek}</strong>.</div>`:''}`;
+  document.getElementById('challengeStreak').textContent=(+extrasState.challenge.noSpend||0)+' 🔥';
+}
+function updateForecast(field,val){
+  extrasState.forecast[field]=parseFloat(val)||0;saveExtras();renderForecast();
+}
+function renderForecast(){
+  const f=extrasState.forecast;
+  document.getElementById('fcInitial').value=f.initial||'';
+  document.getElementById('fcMonthly').value=f.monthly||'';
+  document.getElementById('fcRoi').value=(f.roi||f.roi===0)?f.roi:'';
+  document.getElementById('fcYears').value=f.years||'';
+  const r=(+f.roi||0)/100/12, n=(+f.years||0)*12, P=+f.initial||0, M=+f.monthly||0;
+  let fv;
+  if(r===0)fv=P+M*n; else fv=P*Math.pow(1+r,n)+M*((Math.pow(1+r,n)-1)/r);
+  const contributed=P+M*n;
+  const growth=fv-contributed;
+  document.getElementById('forecastMetrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Value after ${+f.years||0} years</div><div class="metric-value pos">${fmt(fv)}</div></div>`;
+  document.getElementById('forecastBreakdown').innerHTML=`
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span>You put in</span><span>${fmt(contributed)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span>Growth (compounding)</span><span style="color:var(--pos)">${fmt(growth)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:7px 0;font-size:13px;font-weight:600"><span>Total</span><span>${fmt(fv)}</span></div>
+    <div style="font-size:11px;color:var(--text2);margin-top:10px">Estimate only, assuming a steady ${+f.roi||0}% annual return. Real returns vary. Pay off high-interest debt first — guaranteed ~25% "return" by not paying that interest.</div>`;
 }
 
 // ── Recurring Bills ─────────────────────────────────────────────────────────
@@ -1187,11 +1278,13 @@ function renderBudgetScreen(){
     const target=budget.categories[c.id]||'';
     const spent=monthTxns.filter(t=>t.cat===c.id&&t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
     const remaining=target?target-spent:null;
-    return `<div class="budget-row">
-      <div class="budget-cat-name"><span class="cat-dot" style="background:${c.color}"></span>${c.label}</div>
+    const over=target&&remaining<0;
+    const pctUsed=target?Math.min(100,spent/target*100):0;
+    return `<div class="budget-row" style="${over?'background:#1a0c0c':''}">
+      <div class="budget-cat-name"><span class="cat-dot" style="background:${c.color}"></span>${c.label}${over?' <span style="font-size:10px;color:var(--neg)">over</span>':(target&&pctUsed>=80?' <span style="font-size:10px;color:var(--warn)">'+pctUsed.toFixed(0)+'%</span>':'')}</div>
       <input type="number" min="0" step="1" value="${target||''}" onchange="setBudgetCategoryTarget('${month}','${c.id}',this.value)">
       <div class="budget-row-metrics">${spent?'-'+fmt(spent):'$0.00'}</div>
-      <div class="budget-row-metrics">${target?((remaining>=0?'+':'-')+fmt(Math.abs(remaining))):''}</div>
+      <div class="budget-row-metrics" style="${target?('color:'+(remaining>=0?'var(--pos)':'var(--neg)')+';font-weight:600'):''}">${target?((remaining>=0?'+':'-')+fmt(Math.abs(remaining))):''}</div>
     </div>`;
   }).join('');
 }
@@ -1863,6 +1956,8 @@ function showTab(tab){
   if(tab==='goals')renderGoals();
   if(tab==='year')renderYear();
   if(tab==='bills')renderBills();
+  if(tab==='challenge')renderChallenge();
+  if(tab==='forecast')renderForecast();
   if(tab==='rules')renderRules();
   if(tab==='review')renderMerchantReview();
   if(tab==='txnreview')renderTxnReview();
