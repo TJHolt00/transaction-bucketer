@@ -252,7 +252,6 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
         <button class="nav-item" onclick="showTab('review')" id="tab-review">Merchants<span class="badge warn" id="reviewBadge" style="display:none">0</span></button>
         <button class="nav-item" onclick="showTab('txnreview')" id="tab-txnreview">Transactions<span class="badge warn" id="txnReviewBadge" style="display:none">0</span></button>
         <button class="nav-item" onclick="showTab('rules')" id="tab-rules">Rules<span class="badge info" id="rulesBadge">0</span></button>
-        <button class="nav-item" onclick="showTab('ai')" id="tab-ai">Ask AI</button>
       </div>
     </nav>
     <div class="content">
@@ -566,40 +565,6 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
   </div>
 
   <!-- ASK AI -->
-  <div class="screen" id="screen-ai">
-    <div class="sync-bar" style="flex-direction:column;align-items:stretch;gap:10px">
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <span class="sync-bar-label" style="flex:0 0 auto">Anthropic API key</span>
-        <input type="password" id="aiKeyInput" placeholder="sk-ant-..." style="flex:1;min-width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;outline:none">
-        <button class="btn-sm btn-export" onclick="saveAIKey()">Save key</button>
-        <button class="btn-sm" onclick="clearAIKey()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:6px 14px;border-radius:7px;font-size:12px;cursor:pointer">Clear</button>
-      </div>
-      <div style="font-size:11px;color:var(--text2)">Stored only in this browser (localStorage). Get a key at <span style="color:var(--accent)">console.anthropic.com</span> → Settings → API Keys. Add ~$5 of credits for thousands of questions.</div>
-    </div>
-
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px">
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-        <span style="font-size:12px;color:var(--text2)">Ask about:</span>
-        <select id="aiMonthSel" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;outline:none"></select>
-        <span class="sync-status" id="aiStatus" style="margin-left:auto;font-size:11px;color:var(--text2)"></span>
-      </div>
-      <textarea id="aiQuestion" placeholder="Examples:
-• Where can I cut $200/month?
-• How much did I spend on coffee this year?
-• List my subscriptions and flag any that look unused
-• What's my biggest spending category and why?" style="width:100%;min-height:100px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none;font-family:inherit;resize:vertical;margin-bottom:12px"></textarea>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <button class="btn btn-primary" id="aiAskBtn" onclick="askAI()">Ask Claude</button>
-        <select id="aiModelSel" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;outline:none">
-          <option value="claude-opus-4-7">Opus 4.7 (best, $)</option>
-          <option value="claude-sonnet-4-6" selected>Sonnet 4.6 (balanced, recommended)</option>
-          <option value="claude-haiku-4-5">Haiku 4.5 (cheapest, fastest)</option>
-        </select>
-      </div>
-    </div>
-
-    <div id="aiResponse" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;white-space:pre-wrap;font-size:14px;line-height:1.6;display:none"></div>
-  </div>
   </div>
   </div>
 </div>
@@ -2013,123 +1978,6 @@ function showTab(tab){
   if(tab==='rules')renderRules();
   if(tab==='review')renderMerchantReview();
   if(tab==='txnreview')renderTxnReview();
-  if(tab==='ai')initAITab();
-}
-
-// ── Ask AI ────────────────────────────────────────────────────────────────
-function saveAIKey(){
-  const k=document.getElementById('aiKeyInput').value.trim();
-  if(!k){alert('Paste your Anthropic API key first.');return;}
-  if(!k.startsWith('sk-ant-')){if(!confirm('That key does not look like an Anthropic API key (should start with sk-ant-). Save anyway?'))return;}
-  localStorage.setItem('anthropic_api_key',k);
-  document.getElementById('aiStatus').textContent='● key saved';
-  document.getElementById('aiStatus').style.color='var(--pos)';
-}
-function clearAIKey(){
-  localStorage.removeItem('anthropic_api_key');
-  document.getElementById('aiKeyInput').value='';
-  document.getElementById('aiStatus').textContent='● no key';
-  document.getElementById('aiStatus').style.color='var(--text2)';
-}
-function getAIKey(){return localStorage.getItem('anthropic_api_key')||'';}
-
-function initAITab(){
-  const sel=document.getElementById('aiMonthSel');
-  sel.innerHTML=document.getElementById('monthSel').innerHTML;
-  const k=getAIKey();
-  const status=document.getElementById('aiStatus');
-  if(k){
-    document.getElementById('aiKeyInput').value=k;
-    status.textContent='● key saved';status.style.color='var(--pos)';
-  }else{
-    status.textContent='● no key';status.style.color='var(--text2)';
-  }
-}
-
-function getAITxnContext(){
-  const month=document.getElementById('aiMonthSel').value;
-  const catMap=getCatMap();
-  let txns=allTxns;
-  if(month!=='all'){txns=txns.filter(t=>{const p=t.date.split('/');return`${p[2]||'25'}-${p[0].padStart(2,'0')}`===month;});}
-  const income=txns.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
-  const spend=txns.filter(t=>t.amount<0).reduce((s,t)=>s+t.amount,0);
-  const catTotals={};
-  txns.forEach(t=>{const c=catMap[t.cat]?.label||t.cat;catTotals[c]=(catTotals[c]||0)+t.amount;});
-  const lines=txns
-    .sort((a,b)=>a.date.localeCompare(b.date))
-    .map(t=>`${t.date} | ${(catMap[t.cat]?.label||t.cat).padEnd(20)} | ${t.amount.toFixed(2).padStart(9)} | ${t.desc.substring(0,40)}${t.note?' ['+t.note+']':''}`);
-  const period=month==='all'?'All time':month;
-  return `PERIOD: ${period}
-TRANSACTION COUNT: ${txns.length}
-TOTAL INCOME: $${income.toFixed(2)}
-TOTAL SPENDING: $${Math.abs(spend).toFixed(2)}
-NET: $${(income+spend).toFixed(2)}
-
-SPENDING BY CATEGORY:
-${Object.entries(catTotals).sort((a,b)=>a[1]-b[1]).map(([c,v])=>`  ${c}: $${v.toFixed(2)}`).join('\n')}
-
-ALL TRANSACTIONS (date | category | amount | description [note]):
-${lines.join('\n')}`;
-}
-
-async function askAI(){
-  const key=getAIKey();
-  if(!key){alert('Paste your Anthropic API key above and click Save key first.');return;}
-  const question=document.getElementById('aiQuestion').value.trim();
-  if(!question){alert('Type a question first.');return;}
-  const model=document.getElementById('aiModelSel').value;
-  const btn=document.getElementById('aiAskBtn');
-  const resp=document.getElementById('aiResponse');
-  const status=document.getElementById('aiStatus');
-  btn.disabled=true;btn.textContent='Thinking…';
-  resp.style.display='block';resp.textContent='';
-  status.textContent='● calling Claude…';status.style.color='var(--text2)';
-
-  const txnContext=getAITxnContext();
-  const body={
-    model,
-    max_tokens:2048,
-    system:[
-      {type:'text',text:"You are a personal finance analyst helping the user understand their spending. Be concise, use specific dollar amounts and merchant names from their data, and call out anything notable. Use plain text formatting — no markdown headers or bold."},
-      {type:'text',text:'USER FINANCIAL DATA:\n\n'+txnContext,cache_control:{type:'ephemeral'}}
-    ],
-    messages:[{role:'user',content:question}]
-  };
-
-  try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'content-type':'application/json',
-        'x-api-key':key,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body:JSON.stringify(body)
-    });
-    const data=await r.json();
-    if(!r.ok){
-      resp.textContent='Error: '+(data.error?.message||JSON.stringify(data));
-      status.textContent='● error';status.style.color='var(--neg)';
-    }else{
-      const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
-      resp.textContent=text;
-      const u=data.usage||{};
-      const cached=u.cache_read_input_tokens||0;
-      const written=u.cache_creation_input_tokens||0;
-      const fresh=u.input_tokens||0;
-      const out=u.output_tokens||0;
-      let costNote='';
-      if(cached>0)costNote=` · ${cached.toLocaleString()} tokens served from cache (~90% discount)`;
-      else if(written>0)costNote=` · ${written.toLocaleString()} tokens cached for next question`;
-      status.textContent=`● ${fresh+cached} in / ${out} out${costNote}`;
-      status.style.color='var(--pos)';
-    }
-  }catch(e){
-    resp.textContent='Network error: '+e.message;
-    status.textContent='● error';status.style.color='var(--neg)';
-  }
-  btn.disabled=false;btn.textContent='Ask Claude';
 }
 
 function renderCurrentTab(){
