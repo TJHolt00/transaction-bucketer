@@ -82,6 +82,10 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .metric-value.pos{color:var(--pos)}
 .metric-value.neg{color:var(--neg)}
 .dash-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.budget-panel{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:240px}
+.budget-panel label{font-size:12px;color:var(--text2);white-space:nowrap}
+.budget-panel input{width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
+.budget-status{font-size:12px;color:var(--text2)}
 .dash-top select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
 .dash-top select option{background:var(--surface2)}
 .dash-layout{display:grid;grid-template-columns:230px 1fr;gap:20px}
@@ -162,8 +166,6 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     </div>
     <div id="authError" class="auth-error"></div>
     <button class="btn btn-primary" onclick="signIn()" id="signInBtn" style="width:100%;padding:10px">Sign in</button>
-    <button class="btn btn-secondary" onclick="enterLocalMode()" style="width:100%;padding:10px;margin-top:10px">Continue without login</button>
-    <p class="auth-sub" style="margin-top:12px">Local mode stores data in this browser only and works without Supabase credentials.</p>
   </div>
 </div>
 
@@ -194,6 +196,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     <button class="tab" onclick="showTab('review')" id="tab-review">Merchants<span class="badge warn" id="reviewBadge" style="display:none">0</span></button>
     <button class="tab" onclick="showTab('txnreview')" id="tab-txnreview">Transactions<span class="badge warn" id="txnReviewBadge" style="display:none">0</span></button>
     <button class="tab" onclick="showTab('dashboard')" id="tab-dashboard">Dashboard</button>
+    <button class="tab" onclick="showTab('budget')" id="tab-budget">Budget</button>
     <button class="tab" onclick="showTab('rules')" id="tab-rules">Rules<span class="badge info" id="rulesBadge">0</span></button>
     <button class="tab" onclick="showTab('ai')" id="tab-ai">Ask AI</button>
   </div>
@@ -254,6 +257,12 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 
   <div class="screen" id="screen-dashboard">
     <div class="dash-top">
+      <div class="budget-panel">
+        <label for="budgetAmount">Monthly budget</label>
+        <input type="number" id="budgetAmount" placeholder="0" min="0" step="1">
+        <button class="btn-sm btn-export" onclick="saveBudget()">Save</button>
+        <span id="budgetStatus" class="budget-status">Budget is month-specific; choose a month.</span>
+      </div>
       <select id="monthSel"></select>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <div class="unreviewed-note" id="unreviewedNote" style="display:none" onclick="showTab('txnreview')"></div>
@@ -265,6 +274,8 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
       <div class="metric"><div class="metric-label">Income</div><div class="metric-value pos" id="mInc">—</div></div>
       <div class="metric"><div class="metric-label">Spending</div><div class="metric-value neg" id="mSpend">—</div></div>
       <div class="metric"><div class="metric-label">Net</div><div class="metric-value" id="mNet">—</div></div>
+      <div class="metric"><div class="metric-label">Budget</div><div class="metric-value" id="mBudget">—</div></div>
+      <div class="metric"><div class="metric-label">Budget left</div><div class="metric-value" id="mBudgetLeft">—</div></div>
       <div class="metric"><div class="metric-label">Transactions</div><div class="metric-value" id="mCount">—</div></div>
     </div>
     <div class="dash-layout">
@@ -302,6 +313,52 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     </div>
   </div>
 
+  <div class="screen" id="screen-budget">
+    <div class="budget-screen-top">
+        <div class="budget-field-row">
+        <label for="budgetPlanSel">Budget plan</label>
+        <div class="budget-plan-row">
+          <select id="budgetPlanSel"></select>
+          <button class="btn btn-secondary" onclick="promptNewBudgetPlan()">New plan</button>
+        </div>
+      </div>
+      <div class="budget-field-row budget-plan-meta-row">
+        <div class="budget-plan-meta-label">Active plan:</div>
+        <div class="budget-plan-meta-value" id="activeBudgetPlanName">Primary</div>
+        <button class="btn btn-secondary" onclick="promptRenameBudgetPlan()">Rename</button>
+        <button class="btn btn-secondary" onclick="deleteBudgetPlan()">Delete</button>
+      </div>
+      <div id="budgetPlanMetaText" class="budget-plan-meta-text" style="margin-bottom:12px;color:var(--text2);font-size:0.95rem">Created today</div>
+      <div class="budget-field-row">
+        <label for="budgetMonthSel">Month</label>
+        <select id="budgetMonthSel"></select>
+      </div>
+      <div class="budget-field-row">
+        <label for="budgetTotalInput">Total budget</label>
+        <input type="number" id="budgetTotalInput" placeholder="0" min="0" step="1">
+      </div>
+      <div class="budget-field-row">
+        <label for="savingsGoalInput">Savings goal</label>
+        <input type="number" id="savingsGoalInput" placeholder="0" min="0" step="1">
+      </div>
+      <div class="budget-action-row">
+        <button class="btn btn-primary" onclick="saveBudgetSettings()">Save budget targets</button>
+        <button class="btn btn-secondary" onclick="resetBudgetFields()">Clear month</button>
+      </div>
+      <div id="budgetScreenStatus" class="budget-status">Choose a month to edit budget targets and savings goals.</div>
+    </div>
+    <div class="budget-summary-grid">
+      <div class="metric"><div class="metric-label">Month spending</div><div class="metric-value neg" id="bSpend">—</div></div>
+      <div class="metric"><div class="metric-label">Budget remaining</div><div class="metric-value" id="bRemain">—</div></div>
+      <div class="metric"><div class="metric-label">Savings goal</div><div class="metric-value" id="bGoal">—</div></div>
+      <div class="metric"><div class="metric-label">Target gap</div><div class="metric-value" id="bGap">—</div></div>
+    </div>
+    <div class="section-label">Category spending targets</div>
+    <div class="budget-table-header">
+      <div>Category</div><div>Target</div><div>Spent</div><div>Remaining</div>
+    </div>
+    <div class="budget-category-table" id="budgetCategoryTable"></div>
+  </div>
   <div class="screen" id="screen-rules">
     <div class="section-label" style="margin-bottom:12px">Custom categories</div>
     <div id="customCatsList" style="margin-bottom:24px"></div>
@@ -374,11 +431,9 @@ let CATS=[
 const DEFAULT_IDS=CATS.map(c=>c.id);
 function randColor(){return`hsl(${Math.floor(Math.random()*360)},60%,60%)`;}
 function getCatMap(){return Object.fromEntries(CATS.map(c=>[c.id,c]));}
-let localOnly=false;
-const LS_TXNS='bucketer_txns';
-const LS_RULES='bucketer_rules';
-const LS_CATS='bucketer_custom_cats';
-
+const APP_SETTING_CUSTOM_CATS='custom_cats';
+const APP_SETTING_BUDGETS='budget_targets';
+let budgetTargets={};
 let merchantRules={},askLater=new Set();
 
 function txnToRow(t){
@@ -389,25 +444,10 @@ function rowToTxn(r){
 }
 
 async function loadAllData(){
-  if(localOnly){
-    const txns=JSON.parse(localStorage.getItem(LS_TXNS)||'[]');
-    const rules=JSON.parse(localStorage.getItem(LS_RULES)||'{}');
-    const customCats=JSON.parse(localStorage.getItem(LS_CATS)||'[]');
-    allTxns=(txns||[]).map(rowToTxn);
-    merchantRules={};askLater=new Set();
-    Object.entries(rules||{}).forEach(([keyword,bucket])=>{
-      if(bucket==='__ask_later__')askLater.add(keyword);
-      else merchantRules[keyword]=bucket;
-    });
-    if(Array.isArray(customCats)){
-      customCats.forEach(c=>{if(!CATS.find(x=>x.id===c.id))CATS.push(c);});
-    }
-    return;
-  }
-  const[txnRes,ruleRes,settingRes]=await Promise.all([
+  const [txnRes, ruleRes, settingRes] = await Promise.all([
     db.from('transactions').select('*').order('inserted_at').range(0, 20000),
     db.from('merchant_rules').select('*').range(0, 20000),
-    db.from('app_settings').select('*').eq('key','custom_cats').range(0, 20000)
+    db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS])
   ]);
   if(txnRes.error)console.error('load txns',txnRes.error);
   if(ruleRes.error)console.error('load rules',ruleRes.error);
@@ -418,33 +458,24 @@ async function loadAllData(){
     if(r.bucket==='__ask_later__')askLater.add(r.keyword);
     else merchantRules[r.keyword]=r.bucket;
   });
-  const cs=settingRes.data&&settingRes.data[0];
-  if(cs&&Array.isArray(cs.value)){
-    cs.value.forEach(c=>{if(!CATS.find(x=>x.id===c.id))CATS.push(c);});
-  }
+  budgetTargets={plans:{},active:'Primary'};
+  (settingRes.data||[]).forEach(s=>{
+    if(s.key===APP_SETTING_CUSTOM_CATS && Array.isArray(s.value)){
+      s.value.forEach(c=>{if(!CATS.find(x=>x.id===c.id))CATS.push(c);});
+    }
+    if(s.key===APP_SETTING_BUDGETS && s.value && typeof s.value==='object'){
+      budgetTargets=s.value;
+    }
+  });
+  ensureBudgetStructure();
 }
 
 async function upsertTxns(txnsArr){
   if(!txnsArr||!txnsArr.length)return;
-  if(localOnly){
-    const existing=Object.fromEntries((JSON.parse(localStorage.getItem(LS_TXNS)||'[]')||[]).map(r=>[r.id,r]));
-    txnsArr.forEach(t=>{existing[t.id]=txnToRow(t);});
-    localStorage.setItem(LS_TXNS,JSON.stringify(Object.values(existing)));
-    return;
-  }
   const{error}=await db.from('transactions').upsert(txnsArr.map(txnToRow));
   if(error)console.error('upsertTxns',error);
 }
 async function upsertRule(mk,cat){
-  if(localOnly){
-    const rules=JSON.parse(localStorage.getItem(LS_RULES)||'{}');
-    rules[mk]=cat;
-    localStorage.setItem(LS_RULES,JSON.stringify(rules));
-    if(cat==='__ask_later__'){askLater.add(mk);}else{merchantRules[mk]=cat;askLater.delete(mk);}
-    const rb=document.getElementById('rulesBadge');
-    if(rb)rb.textContent=Object.keys(merchantRules).length;
-    return;
-  }
   const{error}=await db.from('merchant_rules').upsert({keyword:mk,bucket:cat});
   if(error)console.error('upsertRule',error);
   if(cat==='__ask_later__'){askLater.add(mk);}else{merchantRules[mk]=cat;askLater.delete(mk);}
@@ -452,25 +483,258 @@ async function upsertRule(mk,cat){
   if(rb)rb.textContent=Object.keys(merchantRules).length;
 }
 async function removeRule(mk){
-  if(localOnly){
-    const rules=JSON.parse(localStorage.getItem(LS_RULES)||'{}');
-    delete rules[mk];
-    localStorage.setItem(LS_RULES,JSON.stringify(rules));
-    delete merchantRules[mk];askLater.delete(mk);
-    return;
-  }
   const{error}=await db.from('merchant_rules').delete().eq('keyword',mk);
   if(error)console.error('removeRule',error);
   delete merchantRules[mk];askLater.delete(mk);
 }
 async function saveCustomCats(){
   const custom=CATS.filter(c=>!DEFAULT_IDS.includes(c.id));
-  if(localOnly){
-    localStorage.setItem(LS_CATS,JSON.stringify(custom));
+  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_CUSTOM_CATS,value:custom,updated_at:new Date().toISOString()});
+  if(error)console.error('saveCustomCats',error);
+}
+
+async function saveBudgetTargets(){
+  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_BUDGETS,value:budgetTargets,updated_at:new Date().toISOString()});
+  if(error)console.error('saveBudgetTargets',error);
+}
+
+function createBudgetPlan(name){
+  return {
+    __meta:{
+      name,
+      createdAt:new Date().toISOString(),
+      year:new Date().getFullYear()
+    }
+  };
+}
+
+function ensureBudgetStructure(){
+  if(!budgetTargets||typeof budgetTargets!=='object')budgetTargets={plans:{},active:'Primary'};
+  if(!budgetTargets.plans||typeof budgetTargets.plans!=='object')budgetTargets.plans={};
+  const planKeys=Object.keys(budgetTargets.plans);
+  if(planKeys.length===0){budgetTargets.plans.Primary=createBudgetPlan('Primary');budgetTargets.active='Primary';}
+  if(!budgetTargets.active||!budgetTargets.plans[budgetTargets.active]){
+    budgetTargets.active=planKeys[0]||'Primary';
+    if(!budgetTargets.plans[budgetTargets.active])budgetTargets.plans[budgetTargets.active]=createBudgetPlan(budgetTargets.active);
+  }
+  Object.keys(budgetTargets.plans).forEach(plan => {
+    if(!budgetTargets.plans[plan]||typeof budgetTargets.plans[plan]!=='object')budgetTargets.plans[plan]=createBudgetPlan(plan);
+    if(!budgetTargets.plans[plan].__meta)budgetTargets.plans[plan].__meta={name:plan,createdAt:new Date().toISOString(),year:new Date().getFullYear()};
+  });
+}
+
+function getActiveBudgetPlan(){
+  ensureBudgetStructure();
+  return budgetTargets.active;
+}
+
+function setActiveBudgetPlan(plan){
+  if(!budgetTargets.plans[plan])return;
+  budgetTargets.active=plan;
+}
+
+function getBudgetPlanNames(){
+  ensureBudgetStructure();
+  return Object.keys(budgetTargets.plans);
+}
+
+function getBudgetPlanMeta(plan){
+  plan=plan||getActiveBudgetPlan();
+  ensureBudgetStructure();
+  return budgetTargets.plans[plan].__meta||{name:plan,createdAt:'',year:new Date().getFullYear()};
+}
+
+function getBudgetForMonth(month){
+  if(!month||month==='all')return {total:0,savingsGoal:0,categories:{}};
+  const plan=getActiveBudgetPlan();
+  const entry=budgetTargets.plans[plan][month];
+  if(typeof entry==='number' || typeof entry==='string'){
+    return {total:parseFloat(entry)||0,savingsGoal:0,categories:{}};
+  }
+  if(!entry||typeof entry!=='object')return {total:0,savingsGoal:0,categories:{}};
+  return {
+    total:parseFloat(entry.total)||0,
+    savingsGoal:parseFloat(entry.savingsGoal)||0,
+    categories:entry.categories && typeof entry.categories==='object' ? {...entry.categories} : {}
+  };
+}
+
+function populateBudgetPlans(){
+  const planSel=document.getElementById('budgetPlanSel');
+  const planNames=getBudgetPlanNames();
+  if(!planSel)return;
+  planSel.innerHTML=planNames.map(p=>`<option value="${p}">${p}</option>`).join('');
+  planSel.value=getActiveBudgetPlan();
+}
+
+async function promptNewBudgetPlan(){
+  const name=prompt('Enter a name for the new budget plan:',`Budget ${new Date().getFullYear()}`);
+  if(!name) return;
+  const safe=name.trim();
+  if(!safe) return;
+  if(budgetTargets.plans[safe]){alert('A plan with that name already exists.');return;}
+  budgetTargets.plans[safe]=createBudgetPlan(safe);
+  budgetTargets.active=safe;
+  await saveBudgetTargets();
+  if(document.getElementById('budgetPlanSel'))populateBudgetPlans();
+  if(document.getElementById('budgetMonthSel'))renderBudgetScreen();
+}
+
+async function promptRenameBudgetPlan(){
+  const current=getActiveBudgetPlan();
+  const name=prompt('Enter a new name for this budget plan:',current);
+  if(!name) return;
+  const safe=name.trim();
+  if(!safe||safe===current) return;
+  if(budgetTargets.plans[safe]){alert('A plan with that name already exists.');return;}
+  budgetTargets.plans[safe]=budgetTargets.plans[current];
+  budgetTargets.plans[safe].__meta.name=safe;
+  delete budgetTargets.plans[current];
+  budgetTargets.active=safe;
+  await saveBudgetTargets();
+  populateBudgetPlans();
+  renderBudgetScreen();
+  updateBudgetUI();
+  renderDashboard();
+}
+
+async function deleteBudgetPlan(){
+  const current=getActiveBudgetPlan();
+  if(!current){return;}
+  const planNames=getBudgetPlanNames();
+  if(planNames.length===1){alert('You must keep at least one budget plan.');return;}
+  if(!confirm(`Delete the budget plan “${current}”? This cannot be undone.`))return;
+  delete budgetTargets.plans[current];
+  budgetTargets.active=planNames.find(p=>p!==current)||Object.keys(budgetTargets.plans)[0];
+  await saveBudgetTargets();
+  populateBudgetPlans();
+  renderBudgetScreen();
+  updateBudgetUI();
+  renderDashboard();
+}
+
+function updateBudgetUI(){
+  const month=document.getElementById('monthSel')?.value||'all';
+  const input=document.getElementById('budgetAmount');
+  const status=document.getElementById('budgetStatus');
+  const budget=getBudgetForMonth(month);
+  if(input)input.value=budget.total?budget.total.toFixed(0):'';
+  if(!status)return;
+  if(month==='all'){
+    status.textContent='Budget is month-specific; choose a month to edit.';
+    status.style.color='var(--text2)';
+  } else if(budget.total>0){
+    status.textContent=`Saved budget: $${budget.total.toFixed(0)}`;
+    status.style.color='var(--pos)';
+  } else {
+    status.textContent='No monthly budget set yet.';
+    status.style.color='var(--text2)';
+  }
+}
+
+async function saveBudget(){
+  const month=document.getElementById('monthSel').value;
+  if(month==='all'){alert('Select a month before setting a budget.');return;}
+  const raw=document.getElementById('budgetAmount').value.trim();
+  const budget=getBudgetForMonth(month);
+  if(raw===''){
+    const plan=getActiveBudgetPlan();
+    delete budgetTargets.plans[plan][month];
+    await saveBudgetTargets();
+    updateBudgetUI();
+    renderDashboard();
     return;
   }
-  const{error}=await db.from('app_settings').upsert({key:'custom_cats',value:custom,updated_at:new Date().toISOString()});
-  if(error)console.error('saveCustomCats',error);
+  const amt=parseFloat(raw);
+  if(isNaN(amt)||amt<0){alert('Enter a valid budget amount.');return;}
+  const plan=getActiveBudgetPlan();
+  budgetTargets.plans[plan][month]={...budget,categories:budget.categories,total:amt};
+  await saveBudgetTargets();
+  updateBudgetUI();
+  renderDashboard();
+}
+
+function renderBudgetScreen(){
+  const plan=getActiveBudgetPlan();
+  const meta=getBudgetPlanMeta(plan);
+  document.getElementById('activeBudgetPlanName').textContent=meta.name || plan;
+  const metaLabel=document.getElementById('budgetPlanMetaText');
+  if(metaLabel){
+    metaLabel.textContent=`Created ${new Date(meta.createdAt).toLocaleDateString()} · Year ${meta.year}`;
+  }
+  const month=document.getElementById('budgetMonthSel').value||'all';
+  const budget=getBudgetForMonth(month);
+  const monthTxns=allTxns.filter(t=>{
+    if(month==='all')return true;
+    const p=t.date.split('/');
+    return `${p[2]||'25'}-${p[0].padStart(2,'0')}`===month;
+  });
+  const spend=monthTxns.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
+  const budgetRemaining=budget.total?budget.total-spend:null;
+  const targetGap=budget.total?budget.total-spend:0;
+  document.getElementById('budgetTotalInput').value=budget.total?budget.total.toFixed(0):'';
+  document.getElementById('savingsGoalInput').value=budget.savingsGoal?budget.savingsGoal.toFixed(0):'';
+  const status=document.getElementById('budgetScreenStatus');
+  if(month==='all'){
+    status.textContent='Choose a month to edit budget targets and savings goals.';
+  } else {
+    status.textContent=`Spent -${fmt(spend)} this month. Budget remaining ${budget.total?((budgetRemaining>=0?'+':'-')+fmt(Math.abs(budgetRemaining))):'—'}. Savings goal ${budget.savingsGoal?fmt(budget.savingsGoal):'not set'}.`;
+  }
+  document.getElementById('bSpend').textContent=spend?'-'+fmt(spend):'$0.00';
+  document.getElementById('bRemain').textContent=budget.total?((budgetRemaining>=0?'+':'-')+fmt(Math.abs(budgetRemaining))):'—';
+  document.getElementById('bGoal').textContent=budget.savingsGoal?fmt(budget.savingsGoal):'—';
+  document.getElementById('bGap').textContent=budget.total?((targetGap>=0?'+':'-')+fmt(Math.abs(targetGap))):'—';
+  const categories=CATS.filter(c=>c.id!=='income');
+  document.getElementById('budgetCategoryTable').innerHTML=categories.map(c=>{
+    const target=budget.categories[c.id]||'';
+    const spent=monthTxns.filter(t=>t.cat===c.id&&t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
+    const remaining=target?target-spent:null;
+    return `<div class="budget-row">
+      <div class="budget-cat-name"><span class="cat-dot" style="background:${c.color}"></span>${c.label}</div>
+      <input type="number" min="0" step="1" value="${target||''}" onchange="setBudgetCategoryTarget('${month}','${c.id}',this.value)">
+      <div class="budget-row-metrics">${spent?'-'+fmt(spent):'$0.00'}</div>
+      <div class="budget-row-metrics">${target?((remaining>=0?'+':'-')+fmt(Math.abs(remaining))):''}</div>
+    </div>`;
+  }).join('');
+}
+
+async function saveBudgetSettings(){
+  const month=document.getElementById('budgetMonthSel').value;
+  if(month==='all'){alert('Select a month to set a budget.');return;}
+  const total=parseFloat(document.getElementById('budgetTotalInput').value)||0;
+  const savings=parseFloat(document.getElementById('savingsGoalInput').value)||0;
+  const budget=getBudgetForMonth(month);
+  const plan=getActiveBudgetPlan();
+  budgetTargets.plans[plan][month]={...budget,categories:budget.categories,total,total,savingsGoal:savings};
+  await saveBudgetTargets();
+  updateBudgetUI();
+  renderBudgetScreen();
+  renderDashboard();
+}
+
+async function setBudgetCategoryTarget(month,cat,value){
+  if(!month||month==='all')return;
+  const budget=getBudgetForMonth(month);
+  const num=value.trim()===''?0:parseFloat(value);
+  if(isNaN(num)||num<0){alert('Enter a valid category target.');return;}
+  const categories={...budget.categories};
+  if(num===0){delete categories[cat];}
+  else{categories[cat]=num;}
+  const plan=getActiveBudgetPlan();
+  budgetTargets.plans[plan][month]={...budget,total:budget.total,savingsGoal:budget.savingsGoal,categories};
+  await saveBudgetTargets();
+  renderBudgetScreen();
+  renderDashboard();
+}
+
+async function resetBudgetFields(){
+  const month=document.getElementById('budgetMonthSel').value;
+  if(month==='all'){return;}
+  const plan=getActiveBudgetPlan();
+  delete budgetTargets.plans[plan][month];
+  await saveBudgetTargets();
+  renderBudgetScreen();
+  renderDashboard();
 }
 
 async function signIn(){
@@ -486,30 +750,17 @@ async function signIn(){
     btn.disabled=false;btn.textContent='Sign in';
     return;
   }
-  localOnly=false;
-  await showApp();
-}
-async function enterLocalMode(){
-  localOnly=true;
   await showApp();
 }
 async function signOut(){
-  if(localOnly){
-    location.reload();
-    return;
-  }
   await db.auth.signOut();
   location.reload();
 }
 async function showApp(){
   document.getElementById('authScreen').style.display='none';
   document.getElementById('mainApp').style.display='block';
-  if(localOnly){
-    document.getElementById('syncLabel').textContent='Local mode';
-  } else {
-    const{data:{session}}=await db.auth.getSession();
-    if(session)document.getElementById('syncLabel').textContent='Signed in as '+session.user.email;
-  }
+  const{data:{session}}=await db.auth.getSession();
+  if(session)document.getElementById('syncLabel').textContent='Signed in as '+session.user.email;
   await initApp();
 }
 
@@ -530,7 +781,6 @@ async function setNewPassword(){
   }
   history.replaceState(null,'',window.location.pathname);
   document.getElementById('setPasswordScreen').style.display='none';
-  localOnly=false;
   await showApp();
 }
 
@@ -861,12 +1111,14 @@ function populateMonths(){
   const months=new Set();
   allTxns.forEach(t=>{const p=t.date.split('/');if(p.length>=2)months.add(`${p[2]||'25'}-${p[0].padStart(2,'0')}`);});
   const sorted=[...months].sort();
-  const sel=document.getElementById('monthSel');
-  sel.innerHTML='<option value="all">All months</option>'+sorted.map(m=>{
+  const html='<option value="all">All months</option>'+sorted.map(m=>{
     const[y,mo]=m.split('-');
     const d=new Date(2000+parseInt(y),parseInt(mo)-1,1);
     return`<option value="${m}">${d.toLocaleString('default',{month:'long'})} 20${y}</option>`;
   }).join('');
+  document.getElementById('monthSel').innerHTML=html;
+  const budgetSel=document.getElementById('budgetMonthSel');
+  if(budgetSel)budgetSel.innerHTML=html;
 }
 
 function populateCatFilter(){
@@ -892,9 +1144,21 @@ function renderDashboard(){
   const income=txns.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
   const spend=txns.filter(t=>t.amount<0).reduce((s,t)=>s+t.amount,0);
   const net=income+spend;
+  const budget=getBudgetForMonth(month);
+  const budgetTotal=budget.total;
+  const budgetLeft=budgetTotal?budgetTotal+spend:null;
   document.getElementById('mInc').textContent=fmt(income);
   document.getElementById('mSpend').textContent='-'+fmt(spend);
   const ne=document.getElementById('mNet');ne.textContent=(net>=0?'':'-')+fmt(net);ne.className='metric-value '+(net>=0?'pos':'neg');
+  document.getElementById('mBudget').textContent=budgetTotal?fmt(budgetTotal):'—';
+  const mb=document.getElementById('mBudgetLeft');
+  if(budget){
+    mb.textContent=(budgetLeft>=0?'+':'-')+fmt(Math.abs(budgetLeft));
+    mb.className='metric-value '+(budgetLeft>=0?'pos':'neg');
+  } else {
+    mb.textContent='—';
+    mb.className='metric-value';
+  }
   document.getElementById('mCount').textContent=txns.length.toLocaleString();
   const nr=allTxns.filter(t=>t.needsReview).length;
   const nrEl=document.getElementById('unreviewedNote');
@@ -1094,6 +1358,7 @@ function showTab(tab){
   document.getElementById('tab-'+tab).classList.add('active');
   document.getElementById('screen-'+tab).classList.add('active');
   if(tab==='dashboard')renderDashboard();
+  if(tab==='budget')renderBudgetScreen();
   if(tab==='rules')renderRules();
   if(tab==='review')renderMerchantReview();
   if(tab==='txnreview')renderTxnReview();
@@ -1262,7 +1527,7 @@ async function initApp(){
   await loadAllData();
   merchantQueue=buildMerchantQueue(allTxns);
   txnQueue=buildTxnQueue(allTxns);
-  updateBadges();populateMonths();populateCatFilter();
+  updateBadges();populateMonths();populateBudgetPlans();populateCatFilter();
   const pending=merchantQueue.length+(txnQueue.filter(t=>t.needsReview&&t.txnReview).length);
   document.getElementById('importStatus').textContent=allTxns.length>0
     ?`${allTxns.length.toLocaleString()} transactions loaded.${pending>0?' '+pending+' still need review.':''}`
@@ -1271,7 +1536,8 @@ async function initApp(){
   else if(txnQueue.filter(t=>t.needsReview&&t.txnReview).length>0){showTab('txnreview');renderTxnReview();}
   else if(allTxns.length>0){showTab('dashboard');renderDashboard();}
   document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
-  if(!localOnly) setupRealtime();
+  updateBudgetUI();
+  setupRealtime();
 }
 
 document.addEventListener('DOMContentLoaded',async()=>{
@@ -1287,17 +1553,10 @@ document.addEventListener('DOMContentLoaded',async()=>{
         const data=JSON.parse(ev.target.result);
         if(data.rules)Object.entries(data.rules).forEach(([mk,cat])=>{merchantRules[mk]=cat;});
         if(data.askLater)data.askLater.forEach(k=>{askLater.add(k);});
-        if(localOnly){
-          const rules=JSON.parse(localStorage.getItem(LS_RULES)||'{}');
-          if(data.rules)Object.entries(data.rules).forEach(([mk,cat])=>{rules[mk]=cat;});
-          if(data.askLater)data.askLater.forEach(k=>{rules[k]='__ask_later__';});
-          localStorage.setItem(LS_RULES,JSON.stringify(rules));
-        } else {
-          const upserts=[];
-          if(data.rules)Object.entries(data.rules).forEach(([mk,cat])=>{upserts.push({keyword:mk,bucket:cat});});
-          if(data.askLater)data.askLater.forEach(k=>{upserts.push({keyword:k,bucket:'__ask_later__'});});
-          if(upserts.length)await db.from('merchant_rules').upsert(upserts);
-        }
+        const upserts=[];
+        if(data.rules)Object.entries(data.rules).forEach(([mk,cat])=>{upserts.push({keyword:mk,bucket:cat});});
+        if(data.askLater)data.askLater.forEach(k=>{upserts.push({keyword:k,bucket:'__ask_later__'});});
+        if(upserts.length)await db.from('merchant_rules').upsert(upserts);
         if(data.customCats&&data.customCats.length){
           data.customCats.forEach(c=>{if(!CATS.find(x=>x.id===c.id))CATS.push(c);});
           await saveCustomCats();
@@ -1310,10 +1569,31 @@ document.addEventListener('DOMContentLoaded',async()=>{
   });
   ['searchBox','monthSel','catFilter','typeFilter'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el){el.addEventListener('change',()=>{page=0;renderDashboard();});}
+    if(el){el.addEventListener('change',()=>{
+      page=0;renderDashboard();
+      if(id==='monthSel')updateBudgetUI();
+    });}
   });
   document.getElementById('searchBox').addEventListener('input',()=>{page=0;renderDashboard();});
   document.getElementById('sortSel').addEventListener('change',function(){sortBy=this.value;page=0;renderDashboard();});
+  const budgetPlanSel=document.getElementById('budgetPlanSel');
+  if(budgetPlanSel){
+    budgetPlanSel.addEventListener('change',async ()=>{
+      setActiveBudgetPlan(budgetPlanSel.value);
+      await saveBudgetTargets();
+      populateBudgetPlans();
+      renderBudgetScreen();
+      updateBudgetUI();
+      renderDashboard();
+    });
+  }
+  const budgetMonthSel=document.getElementById('budgetMonthSel');
+  if(budgetMonthSel){
+    budgetMonthSel.addEventListener('change',()=>{
+      renderBudgetScreen();
+      updateBudgetUI();
+    });
+  }
   const uz=document.querySelector('.upload-zone');
   uz.addEventListener('dragover',e=>{e.preventDefault();uz.style.borderColor='var(--accent)';});
   uz.addEventListener('dragleave',()=>{uz.style.borderColor='';});
