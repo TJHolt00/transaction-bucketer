@@ -1,0 +1,7 @@
+# Bank exports / personal financial data — never commit to a public repo
+*.csv
+Transactions_*.csv
+spending_*.csv
+
+# Local scratch
+_chk.js
