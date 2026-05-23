@@ -283,6 +283,14 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
             <option value="income">Income</option>
             <option value="review">Needs review</option>
           </select>
+          <select id="sortSel">
+            <option value="date_desc">Sort: Newest first</option>
+            <option value="date_asc">Sort: Oldest first</option>
+            <option value="spend_desc">Sort: Biggest expense</option>
+            <option value="amount_desc">Sort: Biggest income</option>
+            <option value="desc_az">Sort: Description A–Z</option>
+            <option value="cat_az">Sort: Category A–Z</option>
+          </select>
         </div>
         <div id="txnList"></div>
         <div class="page-row">
@@ -654,8 +662,9 @@ function parseCsv(text){
 
 let allTxns=[],merchantQueue=[],merchantIdx=0;
 let txnQueue=[],txnQueueIdx=0;
-let page=0,activeCat='all',pieChart=null;
+let page=0,activeCat='all',pieChart=null,sortBy='date_desc';
 const PER_PAGE=50;
+function dateKey(d){const p=String(d).split('/');return (p[2]||'00')+(p[0]||'00').padStart(2,'0')+(p[1]||'00').padStart(2,'0');}
 
 function buildMerchantQueue(txns){
   const seen=new Set(),queue=[];
@@ -896,6 +905,14 @@ function renderDashboard(){
       <span class="cat-row-name">${c.label}</span>
       <div class="cat-row-right"><div class="cat-row-amt">${fmt(c.total)}</div><div class="cat-row-ct">${c.count} txns</div></div>
     </div>`).join('')+`<div class="cat-row${activeCat==='all'?' active':''}" onclick="setActiveCat('all')" style="margin-top:6px"><span class="cat-row-name" style="color:var(--text2);font-size:12px">Show all</span></div>`;
+  txns=[...txns].sort((a,b)=>{
+    if(sortBy==='date_asc')return dateKey(a.date).localeCompare(dateKey(b.date));
+    if(sortBy==='spend_desc')return a.amount-b.amount;
+    if(sortBy==='amount_desc')return b.amount-a.amount;
+    if(sortBy==='desc_az')return a.desc.localeCompare(b.desc);
+    if(sortBy==='cat_az')return (catMap[a.cat]?.label||a.cat).localeCompare(catMap[b.cat]?.label||b.cat);
+    return dateKey(b.date).localeCompare(dateKey(a.date));
+  });
   const start=page*PER_PAGE;const slice=txns.slice(start,start+PER_PAGE);
   document.getElementById('txnList').innerHTML=slice.length?slice.map(t=>`
     <div class="txn-row${t.needsReview?' needs-review':''}">
@@ -1289,6 +1306,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
     if(el){el.addEventListener('change',()=>{page=0;renderDashboard();});}
   });
   document.getElementById('searchBox').addEventListener('input',()=>{page=0;renderDashboard();});
+  document.getElementById('sortSel').addEventListener('change',function(){sortBy=this.value;page=0;renderDashboard();});
   const uz=document.querySelector('.upload-zone');
   uz.addEventListener('dragover',e=>{e.preventDefault();uz.style.borderColor='var(--accent)';});
   uz.addEventListener('dragleave',()=>{uz.style.borderColor='';});
