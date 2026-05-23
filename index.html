@@ -164,6 +164,13 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
   .nav-group-label{display:none}
   .nav-item{width:auto;border:1px solid var(--border)}
 }
+/* Data-forward polish */
+.overview-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);margin:0 0 10px}
+.metric{padding:15px 18px}
+.metric-value{font-size:23px;letter-spacing:-.01em}
+.metric-hero .metric-value{font-size:28px}
+.metric-hero{background:linear-gradient(180deg,var(--surface),var(--bg))}
+.dash-top{margin-bottom:18px}
 </style>
 </head>
 <body>
@@ -203,8 +210,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 </div>
 
 <div class="app" id="mainApp" style="display:none">
-  <h1>Transaction Bucketer</h1>
-  <p class="subtitle">Import your Huntington CSV, review merchants once, get clean spending data forever.</p>
+  <h1 style="margin-bottom:18px">Transaction Bucketer</h1>
   <button id="partyBtn" class="btn btn-secondary" title="Toggle Party Mode" style="position:fixed;right:18px;bottom:18px;z-index:9999;padding:10px 12px;border-radius:999px;font-size:16px">🎉 Party</button>
   <div id="partyOverlay" aria-hidden="true"></div>
   <div class="layout">
@@ -295,34 +301,37 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 
   <div class="screen" id="screen-dashboard">
     <div class="dash-top">
-      <div class="budget-panel">
-        <label for="budgetAmount">Monthly budget</label>
-        <input type="number" id="budgetAmount" placeholder="0" min="0" step="1">
-        <button class="btn-sm btn-export" onclick="saveBudget()">Save</button>
-        <span id="budgetStatus" class="budget-status">Budget is month-specific; choose a month.</span>
-      </div>
-      <select id="monthSel"></select>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <select id="monthSel"></select>
         <div class="unreviewed-note" id="unreviewedNote" style="display:none" onclick="showTab('txnreview')"></div>
-        <button class="btn-sm btn-export" onclick="exportCSV()" title="Export to spreadsheet">⬇ Export CSV</button>
-        <button class="btn-sm btn-export" onclick="exportPDF()" title="Export to PDF report">⬇ Export PDF</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn-sm btn-export" onclick="exportCSV()" title="Export to spreadsheet">⬇ CSV</button>
+        <button class="btn-sm btn-export" onclick="exportPDF()" title="Export to PDF report">⬇ PDF</button>
       </div>
     </div>
+    <div class="overview-label">Where you stand</div>
+    <div class="metrics" style="margin-bottom:20px">
+      <div class="metric metric-hero"><div class="metric-label">Net worth</div><div class="metric-value" id="ovNetWorth">—</div></div>
+      <div class="metric metric-hero"><div class="metric-label">Total debt</div><div class="metric-value neg" id="ovDebt">—</div></div>
+      <div class="metric metric-hero"><div class="metric-label">Savings rate</div><div class="metric-value" id="ovRate">—</div></div>
+      <div class="metric metric-hero"><div class="metric-label">Debt-free</div><div class="metric-value" id="ovDebtFree">—</div></div>
+    </div>
+    <div class="overview-label">Cash flow <span id="dashPeriodLabel" style="color:var(--text2);text-transform:none;letter-spacing:0;font-weight:400"></span></div>
     <div class="metrics">
       <div class="metric"><div class="metric-label">Income</div><div class="metric-value pos" id="mInc">—</div></div>
       <div class="metric"><div class="metric-label">Spending</div><div class="metric-value neg" id="mSpend">—</div></div>
       <div class="metric"><div class="metric-label">Net</div><div class="metric-value" id="mNet">—</div></div>
-      <div class="metric"><div class="metric-label">Budget</div><div class="metric-value" id="mBudget">—</div></div>
-      <div class="metric"><div class="metric-label">Budget left</div><div class="metric-value" id="mBudgetLeft">—</div></div>
       <div class="metric"><div class="metric-label">Transactions</div><div class="metric-value" id="mCount">—</div></div>
     </div>
-    <div class="dash-layout">
+    <div class="dash-layout" style="margin-top:24px">
       <div>
+        <div class="overview-label">Where it goes</div>
         <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
-        <div class="section-label">By category</div>
         <div class="cat-list" id="catList"></div>
       </div>
       <div>
+        <div class="overview-label">Transactions</div>
         <div class="controls">
           <input type="text" id="searchBox" placeholder="Search transactions…">
           <select id="catFilter"><option value="all">All categories</option></select>
@@ -1767,22 +1776,21 @@ function renderDashboard(){
   const income=txns.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
   const spend=txns.filter(t=>t.amount<0).reduce((s,t)=>s+t.amount,0);
   const net=income+spend;
-  const budget=getBudgetForMonth(month);
-  const budgetTotal=budget.total;
-  const budgetLeft=budgetTotal?budgetTotal+spend:null;
   document.getElementById('mInc').textContent=fmt(income);
   document.getElementById('mSpend').textContent='-'+fmt(spend);
   const ne=document.getElementById('mNet');ne.textContent=(net>=0?'':'-')+fmt(net);ne.className='metric-value '+(net>=0?'pos':'neg');
-  document.getElementById('mBudget').textContent=budgetTotal?fmt(budgetTotal):'—';
-  const mb=document.getElementById('mBudgetLeft');
-  if(budget){
-    mb.textContent=(budgetLeft>=0?'+':'-')+fmt(Math.abs(budgetLeft));
-    mb.className='metric-value '+(budgetLeft>=0?'pos':'neg');
-  } else {
-    mb.textContent='—';
-    mb.className='metric-value';
-  }
   document.getElementById('mCount').textContent=txns.length.toLocaleString();
+  const dpl=document.getElementById('dashPeriodLabel');
+  if(dpl)dpl.textContent=month==='all'?'· all time':'· '+(document.querySelector('#monthSel option:checked')?.textContent||'');
+  // "Where you stand" — cross-cutting financial position
+  const nw=netWorthNumbers();
+  const ovNW=document.getElementById('ovNetWorth');
+  if(ovNW){ovNW.textContent=(nw.net<0?'-':'')+fmt(nw.net);ovNW.className='metric-value '+(nw.net>=0?'pos':'neg');}
+  const ovD=document.getElementById('ovDebt');if(ovD)ovD.textContent=fmt(nw.debtTotal);
+  const rate=income>0?(net/income*100):0;
+  const ovR=document.getElementById('ovRate');if(ovR){ovR.textContent=rate.toFixed(0)+'%';ovR.className='metric-value '+(rate>=0?'pos':'neg');}
+  const ovF=document.getElementById('ovDebtFree');
+  if(ovF){const dbts=debtState.debts.filter(d=>(+d.balance||0)>0);if(dbts.length){const sim=simulatePayoff(dbts,debtState.strategy,debtState.extra);ovF.textContent=sim.finished?monthsToDate(sim.months):'120+ mo';}else ovF.textContent='—';}
   const nr=allTxns.filter(t=>t.needsReview).length;
   const nrEl=document.getElementById('unreviewedNote');
   if(nr>0){nrEl.style.display='block';nrEl.textContent=`${nr} transactions still need review — tap to continue`;}else nrEl.style.display='none';
