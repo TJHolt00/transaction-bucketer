@@ -148,6 +148,22 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 @keyframes fall{0%{transform:translateY(-10vh) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(360deg);opacity:0}}
 @keyframes disco{0%{filter:hue-rotate(0deg)}50%{filter:hue-rotate(90deg)}100%{filter:hue-rotate(0deg)}}
 .party-active body{transition:background-color .4s}
+/* Sidebar layout */
+.layout{display:flex;gap:22px;align-items:flex-start}
+.sidebar{flex:0 0 190px;position:sticky;top:14px;display:flex;flex-direction:column;gap:16px}
+.content{flex:1;min-width:0}
+.nav-group{display:flex;flex-direction:column;gap:2px}
+.nav-group-label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);font-weight:600;margin:0 0 3px 10px}
+.nav-item{display:flex;align-items:center;width:100%;text-align:left;padding:8px 11px;border-radius:8px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;transition:background .12s,color .12s;font-family:inherit}
+.nav-item:hover{background:var(--surface);color:var(--text)}
+.nav-item.active{background:var(--surface2);color:var(--accent);font-weight:600}
+@media(max-width:760px){
+  .layout{flex-direction:column;gap:14px}
+  .sidebar{position:static;flex-direction:row;flex-wrap:wrap;gap:6px;width:100%}
+  .nav-group{display:contents}
+  .nav-group-label{display:none}
+  .nav-item{width:auto;border:1px solid var(--border)}
+}
 </style>
 </head>
 <body>
@@ -191,23 +207,37 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
   <p class="subtitle">Import your Huntington CSV, review merchants once, get clean spending data forever.</p>
   <button id="partyBtn" class="btn btn-secondary" title="Toggle Party Mode" style="position:fixed;right:18px;bottom:18px;z-index:9999;padding:10px 12px;border-radius:999px;font-size:16px">🎉 Party</button>
   <div id="partyOverlay" aria-hidden="true"></div>
-  <div class="tabs">
-    <button class="tab active" onclick="showTab('import')" id="tab-import">Import</button>
-    <button class="tab" onclick="showTab('review')" id="tab-review">Merchants<span class="badge warn" id="reviewBadge" style="display:none">0</span></button>
-    <button class="tab" onclick="showTab('txnreview')" id="tab-txnreview">Transactions<span class="badge warn" id="txnReviewBadge" style="display:none">0</span></button>
-    <button class="tab" onclick="showTab('dashboard')" id="tab-dashboard">Dashboard</button>
-    <button class="tab" onclick="showTab('budget')" id="tab-budget">Budget</button>
-    <button class="tab" onclick="showTab('debt')" id="tab-debt">Debt Payoff</button>
-    <button class="tab" onclick="showTab('nws')" id="tab-nws">50/30/20</button>
-    <button class="tab" onclick="showTab('networth')" id="tab-networth">Net Worth</button>
-    <button class="tab" onclick="showTab('goals')" id="tab-goals">Savings Goals</button>
-    <button class="tab" onclick="showTab('year')" id="tab-year">Year</button>
-    <button class="tab" onclick="showTab('bills')" id="tab-bills">Bills</button>
-    <button class="tab" onclick="showTab('challenge')" id="tab-challenge">Challenge</button>
-    <button class="tab" onclick="showTab('forecast')" id="tab-forecast">Forecast</button>
-    <button class="tab" onclick="showTab('rules')" id="tab-rules">Rules<span class="badge info" id="rulesBadge">0</span></button>
-    <button class="tab" onclick="showTab('ai')" id="tab-ai">Ask AI</button>
-  </div>
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="nav-group">
+        <div class="nav-group-label">Overview</div>
+        <button class="nav-item" onclick="showTab('dashboard')" id="tab-dashboard">Dashboard</button>
+        <button class="nav-item" onclick="showTab('year')" id="tab-year">Year</button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Plan</div>
+        <button class="nav-item" onclick="showTab('budget')" id="tab-budget">Budget</button>
+        <button class="nav-item" onclick="showTab('bills')" id="tab-bills">Bills</button>
+        <button class="nav-item" onclick="showTab('goals')" id="tab-goals">Savings Goals</button>
+        <button class="nav-item" onclick="showTab('nws')" id="tab-nws">50/30/20</button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Get Ahead</div>
+        <button class="nav-item" onclick="showTab('debt')" id="tab-debt">Debt Payoff</button>
+        <button class="nav-item" onclick="showTab('networth')" id="tab-networth">Net Worth</button>
+        <button class="nav-item" onclick="showTab('forecast')" id="tab-forecast">Forecast</button>
+        <button class="nav-item" onclick="showTab('challenge')" id="tab-challenge">Challenge</button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Review &amp; Setup</div>
+        <button class="nav-item active" onclick="showTab('import')" id="tab-import">Import</button>
+        <button class="nav-item" onclick="showTab('review')" id="tab-review">Merchants<span class="badge warn" id="reviewBadge" style="display:none">0</span></button>
+        <button class="nav-item" onclick="showTab('txnreview')" id="tab-txnreview">Transactions<span class="badge warn" id="txnReviewBadge" style="display:none">0</span></button>
+        <button class="nav-item" onclick="showTab('rules')" id="tab-rules">Rules<span class="badge info" id="rulesBadge">0</span></button>
+        <button class="nav-item" onclick="showTab('ai')" id="tab-ai">Ask AI</button>
+      </div>
+    </nav>
+    <div class="content">
 
   <div class="screen active" id="screen-import">
     <div class="sync-bar">
@@ -548,6 +578,8 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     </div>
 
     <div id="aiResponse" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;white-space:pre-wrap;font-size:14px;line-height:1.6;display:none"></div>
+  </div>
+  </div>
   </div>
 </div>
 
@@ -1944,7 +1976,7 @@ async function deleteRule(mk){
 }
 
 function showTab(tab){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   document.getElementById('screen-'+tab).classList.add('active');
@@ -2081,7 +2113,7 @@ async function askAI(){
 }
 
 function renderCurrentTab(){
-  const active=document.querySelector('.tab.active');
+  const active=document.querySelector('.nav-item.active');
   if(!active)return;
   const tab=active.id.replace('tab-','');
   if(tab==='dashboard')renderDashboard();
