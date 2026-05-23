@@ -198,6 +198,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     <button class="tab" onclick="showTab('dashboard')" id="tab-dashboard">Dashboard</button>
     <button class="tab" onclick="showTab('budget')" id="tab-budget">Budget</button>
     <button class="tab" onclick="showTab('debt')" id="tab-debt">Debt Payoff</button>
+    <button class="tab" onclick="showTab('nws')" id="tab-nws">50/30/20</button>
     <button class="tab" onclick="showTab('rules')" id="tab-rules">Rules<span class="badge info" id="rulesBadge">0</span></button>
     <button class="tab" onclick="showTab('ai')" id="tab-ai">Ask AI</button>
   </div>
@@ -385,6 +386,17 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     </div>
   </div>
 
+  <div class="screen" id="screen-nws">
+    <div class="dash-top">
+      <select id="nwsMonthSel" onchange="renderNWS()"></select>
+      <span style="font-size:12px;color:var(--text2)">The 50/30/20 rule: 50% Needs · 30% Wants · 20% Savings &amp; debt paydown</span>
+    </div>
+    <div class="metrics" id="nwsMetrics" style="margin-bottom:20px"></div>
+    <div id="nwsBars" style="margin-bottom:24px"></div>
+    <div class="section-label" style="margin-bottom:10px">How each category is classified <span style="color:var(--text2);font-weight:400">(click to change)</span></div>
+    <div id="nwsCatList"></div>
+  </div>
+
   <div class="screen" id="screen-rules">
     <div class="section-label" style="margin-bottom:12px">Custom categories</div>
     <div id="customCatsList" style="margin-bottom:24px"></div>
@@ -460,8 +472,12 @@ function getCatMap(){return Object.fromEntries(CATS.map(c=>[c.id,c]));}
 const APP_SETTING_CUSTOM_CATS='custom_cats';
 const APP_SETTING_BUDGETS='budget_targets';
 const APP_SETTING_DEBTS='debts';
+const APP_SETTING_NWS='nws_classes';
 let budgetTargets={};
 let debtState={debts:[],strategy:'avalanche',extra:0};
+let nwsOverrides={};
+const NWS_DEFAULT={groceries:'needs',gas:'needs',utilities:'needs',housing:'needs',healthcare:'needs',auto:'needs',home:'needs',pet:'needs',transfers:'savings',dining:'wants',fastfood:'wants',coffee:'wants',shopping:'wants',subscriptions:'wants',kids:'wants',personal:'wants',other:'wants'};
+function nwsClass(catId){return nwsOverrides[catId]||NWS_DEFAULT[catId]||'wants';}
 let merchantRules={},askLater=new Set();
 
 function txnToRow(t){
@@ -475,7 +491,7 @@ async function loadAllData(){
   const [txnRes, ruleRes, settingRes] = await Promise.all([
     db.from('transactions').select('*').order('inserted_at').range(0, 20000),
     db.from('merchant_rules').select('*').range(0, 20000),
-    db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS])
+    db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS])
   ]);
   if(txnRes.error)console.error('load txns',txnRes.error);
   if(ruleRes.error)console.error('load rules',ruleRes.error);
@@ -496,6 +512,9 @@ async function loadAllData(){
     }
     if(s.key===APP_SETTING_DEBTS && s.value && typeof s.value==='object'){
       debtState={debts:Array.isArray(s.value.debts)?s.value.debts:[],strategy:s.value.strategy||'avalanche',extra:+s.value.extra||0};
+    }
+    if(s.key===APP_SETTING_NWS && s.value && typeof s.value==='object'){
+      nwsOverrides=s.value;
     }
   });
   ensureBudgetStructure();
@@ -532,6 +551,68 @@ async function saveBudgetTargets(){
 async function saveDebtState(){
   const{error}=await db.from('app_settings').upsert({key:APP_SETTING_DEBTS,value:debtState,updated_at:new Date().toISOString()});
   if(error)console.error('saveDebtState',error);
+}
+
+async function saveNwsOverrides(){
+  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_NWS,value:nwsOverrides,updated_at:new Date().toISOString()});
+  if(error)console.error('saveNwsOverrides',error);
+}
+
+// ── 50/30/20 Needs/Wants/Savings ────────────────────────────────────────────
+function cycleNwsClass(catId){
+  const order=['needs','wants','savings'];
+  const cur=nwsClass(catId);
+  nwsOverrides[catId]=order[(order.indexOf(cur)+1)%3];
+  saveNwsOverrides();renderNWS();
+}
+
+function renderNWS(){
+  const sel=document.getElementById('nwsMonthSel');
+  if(sel && !sel.options.length){sel.innerHTML=document.getElementById('monthSel').innerHTML;}
+  const month=sel?sel.value:'all';
+  let txns=allTxns;
+  if(month&&month!=='all'){txns=txns.filter(t=>{const p=t.date.split('/');return`${p[2]||'25'}-${p[0].padStart(2,'0')}`===month;});}
+  const income=txns.filter(t=>t.amount>0&&t.cat!=='transfers').reduce((s,t)=>s+t.amount,0);
+  let needs=0,wants=0,savingsSpend=0;
+  txns.filter(t=>t.amount<0&&t.cat!=='income').forEach(t=>{
+    const cls=nwsClass(t.cat),amt=Math.abs(t.amount);
+    if(cls==='needs')needs+=amt;else if(cls==='wants')wants+=amt;else savingsSpend+=amt;
+  });
+  const kept=income-needs-wants; // what's left after needs+wants (the 20% bucket: savings + debt paydown)
+  const pct=v=>income>0?(v/income*100):0;
+  const row=(label,actual,actualPct,target,color)=>{
+    const over=actualPct>target+0.5;
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+        <span><strong>${label}</strong> <span style="color:var(--text2)">target ${target}%</span></span>
+        <span style="color:${over?'var(--neg)':'var(--pos)'}">${fmt(actual)} · ${actualPct.toFixed(0)}%</span>
+      </div>
+      <div style="height:10px;background:var(--surface2);border-radius:5px;overflow:hidden;position:relative">
+        <div style="height:100%;width:${Math.min(100,actualPct)}%;background:${color}"></div>
+        <div style="position:absolute;top:0;left:${target}%;height:100%;width:2px;background:var(--text)"></div>
+      </div>
+    </div>`;
+  };
+  document.getElementById('nwsMetrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Income</div><div class="metric-value pos">${fmt(income)}</div></div>
+    <div class="metric"><div class="metric-label">Needs</div><div class="metric-value">${pct(needs).toFixed(0)}%</div></div>
+    <div class="metric"><div class="metric-label">Wants</div><div class="metric-value">${pct(wants).toFixed(0)}%</div></div>
+    <div class="metric"><div class="metric-label">Saved / debt</div><div class="metric-value ${kept>=0?'pos':'neg'}">${pct(kept).toFixed(0)}%</div></div>`;
+  document.getElementById('nwsBars').innerHTML=
+    row('Needs',needs,pct(needs),50,'#378add')+
+    row('Wants',wants,pct(wants),30,'#fbbf24')+
+    row('Savings & debt paydown',Math.max(0,kept),pct(kept),20,'#34d399')+
+    `<div style="font-size:12px;color:var(--text2);margin-top:8px">The vertical line on each bar is the 50/30/20 target. ${pct(wants)>32?'Your <strong>Wants</strong> are above target — the fastest place to free up money for debt.':'Nice — your wants are in range.'}</div>`;
+  const catMap=getCatMap();
+  const colors={needs:'#378add',wants:'#fbbf24',savings:'#34d399'};
+  const used=[...new Set(txns.filter(t=>t.amount<0&&t.cat!=='income').map(t=>t.cat))];
+  document.getElementById('nwsCatList').innerHTML=used.length?used.map(cid=>{
+    const cls=nwsClass(cid);const label=catMap[cid]?.label||cid;
+    return `<div class="rule-row">
+      <span class="rule-merchant">${label}</span>
+      <span class="rule-cat" style="color:${colors[cls]};cursor:pointer;text-transform:capitalize" onclick="cycleNwsClass('${cid}')">${cls} ⟳</span>
+    </div>`;
+  }).join(''):'<div class="empty">No spending in this period.</div>';
 }
 
 // ── Debt payoff engine ──────────────────────────────────────────────────────
@@ -1507,6 +1588,7 @@ function showTab(tab){
   if(tab==='dashboard')renderDashboard();
   if(tab==='budget')renderBudgetScreen();
   if(tab==='debt')renderDebtScreen();
+  if(tab==='nws')renderNWS();
   if(tab==='rules')renderRules();
   if(tab==='review')renderMerchantReview();
   if(tab==='txnreview')renderTxnReview();
