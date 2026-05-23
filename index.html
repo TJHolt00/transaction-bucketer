@@ -202,6 +202,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     <button class="tab" onclick="showTab('networth')" id="tab-networth">Net Worth</button>
     <button class="tab" onclick="showTab('goals')" id="tab-goals">Savings Goals</button>
     <button class="tab" onclick="showTab('year')" id="tab-year">Year</button>
+    <button class="tab" onclick="showTab('bills')" id="tab-bills">Bills</button>
     <button class="tab" onclick="showTab('rules')" id="tab-rules">Rules<span class="badge info" id="rulesBadge">0</span></button>
     <button class="tab" onclick="showTab('ai')" id="tab-ai">Ask AI</button>
   </div>
@@ -446,6 +447,22 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     </div>
   </div>
 
+  <div class="screen" id="screen-bills">
+    <p class="subtitle" style="margin-bottom:16px">Your recurring bills and when they are due this month. Avoiding one late fee on a 28% card is worth more than it sounds.</p>
+    <div class="metrics" id="billsMetrics" style="margin-bottom:20px"></div>
+    <div class="dash-layout">
+      <div>
+        <div class="section-label">This month — by due date</div>
+        <div id="billsTimeline"></div>
+      </div>
+      <div>
+        <div class="section-label">Your recurring bills</div>
+        <div id="billsList"></div>
+        <button class="btn btn-secondary" onclick="addBill()" style="margin-top:8px">+ Add a bill</button>
+      </div>
+    </div>
+  </div>
+
   <div class="screen" id="screen-rules">
     <div class="section-label" style="margin-bottom:12px">Custom categories</div>
     <div id="customCatsList" style="margin-bottom:24px"></div>
@@ -524,11 +541,13 @@ const APP_SETTING_DEBTS='debts';
 const APP_SETTING_NWS='nws_classes';
 const APP_SETTING_NETWORTH='net_worth';
 const APP_SETTING_GOALS='savings_goals';
+const APP_SETTING_BILLS='recurring_bills';
 let budgetTargets={};
 let debtState={debts:[],strategy:'avalanche',extra:0};
 let nwsOverrides={};
 let netWorthState={assets:[],liabilities:[],snapshots:[]};
 let savingsGoals=[];
+let recurringBills=[];
 const NWS_DEFAULT={groceries:'needs',gas:'needs',utilities:'needs',housing:'needs',healthcare:'needs',auto:'needs',home:'needs',pet:'needs',transfers:'savings',dining:'wants',fastfood:'wants',coffee:'wants',shopping:'wants',subscriptions:'wants',kids:'wants',personal:'wants',other:'wants'};
 function nwsClass(catId){return nwsOverrides[catId]||NWS_DEFAULT[catId]||'wants';}
 let merchantRules={},askLater=new Set();
@@ -544,7 +563,7 @@ async function loadAllData(){
   const [txnRes, ruleRes, settingRes] = await Promise.all([
     db.from('transactions').select('*').order('inserted_at').range(0, 20000),
     db.from('merchant_rules').select('*').range(0, 20000),
-    db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH,APP_SETTING_GOALS])
+    db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH,APP_SETTING_GOALS,APP_SETTING_BILLS])
   ]);
   if(txnRes.error)console.error('load txns',txnRes.error);
   if(ruleRes.error)console.error('load rules',ruleRes.error);
@@ -574,6 +593,9 @@ async function loadAllData(){
     }
     if(s.key===APP_SETTING_GOALS && Array.isArray(s.value)){
       savingsGoals=s.value;
+    }
+    if(s.key===APP_SETTING_BILLS && Array.isArray(s.value)){
+      recurringBills=s.value;
     }
   });
   ensureBudgetStructure();
@@ -615,6 +637,43 @@ async function saveDebtState(){
 async function saveNwsOverrides(){
   const{error}=await db.from('app_settings').upsert({key:APP_SETTING_NWS,value:nwsOverrides,updated_at:new Date().toISOString()});
   if(error)console.error('saveNwsOverrides',error);
+}
+
+// ── Recurring Bills ─────────────────────────────────────────────────────────
+async function saveRecurringBills(){
+  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_BILLS,value:recurringBills,updated_at:new Date().toISOString()});
+  if(error)console.error('saveRecurringBills',error);
+}
+function addBill(){recurringBills.push({name:'',amount:0,dueDay:1});saveRecurringBills();renderBills();}
+function removeBill(i){recurringBills.splice(i,1);saveRecurringBills();renderBills();}
+function updateBill(i,field,val){if(!recurringBills[i])return;recurringBills[i][field]=field==='name'?val:(parseFloat(val)||0);saveRecurringBills();renderBills();}
+function renderBills(){
+  const inp='padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:12px;outline:none';
+  const total=recurringBills.reduce((s,b)=>s+(+b.amount||0),0);
+  const today=new Date().getDate();
+  const sorted=[...recurringBills].map((b,i)=>({...b,_i:i})).sort((a,b)=>(+a.dueDay||0)-(+b.dueDay||0));
+  const upcoming=sorted.filter(b=>(+b.dueDay||0)>=today);
+  const upcomingTotal=upcoming.reduce((s,b)=>s+(+b.amount||0),0);
+  document.getElementById('billsMetrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Monthly bills</div><div class="metric-value neg">${fmt(total)}</div></div>
+    <div class="metric"><div class="metric-label">Bills tracked</div><div class="metric-value">${recurringBills.length}</div></div>
+    <div class="metric"><div class="metric-label">Still due this month</div><div class="metric-value neg">${fmt(upcomingTotal)}</div></div>`;
+  const ord=n=>{const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);};
+  document.getElementById('billsTimeline').innerHTML=sorted.length?sorted.map(b=>{
+    const day=+b.dueDay||0;const past=day<today;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;background:var(--surface);${past?'opacity:.55':''}">
+      <div style="min-width:42px;text-align:center"><div style="font-size:16px;font-weight:600">${day||'?'}</div><div style="font-size:9px;color:var(--text2)">${day?ord(day):''}</div></div>
+      <div style="flex:1;font-size:13px">${b.name||'(unnamed bill)'}${past?' <span style="font-size:10px;color:var(--text2)">· passed</span>':(day===today?' <span style="font-size:10px;color:var(--warn)">· due today</span>':'')}</div>
+      <div style="font-size:13px;font-weight:500;color:var(--neg)">${fmt(+b.amount||0)}</div>
+    </div>`;
+  }).join(''):'<div class="empty">Add your recurring bills to see the month at a glance.</div>';
+  document.getElementById('billsList').innerHTML=recurringBills.length?recurringBills.map((b,i)=>`
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+      <input style="${inp};flex:1" placeholder="Bill name" value="${(b.name||'').replace(/"/g,'&quot;')}" onchange="updateBill(${i},'name',this.value)">
+      <input type="number" style="${inp};width:90px" placeholder="$" value="${b.amount||''}" onchange="updateBill(${i},'amount',this.value)">
+      <input type="number" min="1" max="31" style="${inp};width:60px" placeholder="day" value="${b.dueDay||''}" onchange="updateBill(${i},'dueDay',this.value)" title="Day of month due">
+      <button class="btn-danger" onclick="removeBill(${i})">✕</button>
+    </div>`).join(''):'<div class="empty" style="padding:14px">No bills yet.</div>';
 }
 
 // ── Savings Goals (sinking funds) ───────────────────────────────────────────
@@ -1803,6 +1862,7 @@ function showTab(tab){
   if(tab==='networth')renderNetWorth();
   if(tab==='goals')renderGoals();
   if(tab==='year')renderYear();
+  if(tab==='bills')renderBills();
   if(tab==='rules')renderRules();
   if(tab==='review')renderMerchantReview();
   if(tab==='txnreview')renderTxnReview();
