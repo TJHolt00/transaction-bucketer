@@ -200,6 +200,8 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     <button class="tab" onclick="showTab('debt')" id="tab-debt">Debt Payoff</button>
     <button class="tab" onclick="showTab('nws')" id="tab-nws">50/30/20</button>
     <button class="tab" onclick="showTab('networth')" id="tab-networth">Net Worth</button>
+    <button class="tab" onclick="showTab('goals')" id="tab-goals">Savings Goals</button>
+    <button class="tab" onclick="showTab('year')" id="tab-year">Year</button>
     <button class="tab" onclick="showTab('rules')" id="tab-rules">Rules<span class="badge info" id="rulesBadge">0</span></button>
     <button class="tab" onclick="showTab('ai')" id="tab-ai">Ask AI</button>
   </div>
@@ -419,6 +421,31 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     </div>
   </div>
 
+  <div class="screen" id="screen-goals">
+    <p class="subtitle" style="margin-bottom:16px">Save toward goals on purpose — an emergency fund, a trip, a new appliance — so you stop financing them with high-interest debt.</p>
+    <div class="metrics" id="goalsMetrics" style="margin-bottom:20px"></div>
+    <div id="goalsList"></div>
+    <button class="btn btn-secondary" onclick="addGoal()" style="margin-top:10px">+ Add a savings goal</button>
+  </div>
+
+  <div class="screen" id="screen-year">
+    <div class="dash-top">
+      <select id="yearSel" onchange="renderYear()"></select>
+      <span style="font-size:12px;color:var(--text2)">Your full-year picture</span>
+    </div>
+    <div class="metrics" id="yearMetrics" style="margin-bottom:20px"></div>
+    <div class="dash-layout">
+      <div>
+        <div class="section-label">Monthly net (income − spending)</div>
+        <div id="yearMonths"></div>
+      </div>
+      <div>
+        <div class="section-label">Top spending categories this year</div>
+        <div id="yearCats"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="screen" id="screen-rules">
     <div class="section-label" style="margin-bottom:12px">Custom categories</div>
     <div id="customCatsList" style="margin-bottom:24px"></div>
@@ -496,10 +523,12 @@ const APP_SETTING_BUDGETS='budget_targets';
 const APP_SETTING_DEBTS='debts';
 const APP_SETTING_NWS='nws_classes';
 const APP_SETTING_NETWORTH='net_worth';
+const APP_SETTING_GOALS='savings_goals';
 let budgetTargets={};
 let debtState={debts:[],strategy:'avalanche',extra:0};
 let nwsOverrides={};
 let netWorthState={assets:[],liabilities:[],snapshots:[]};
+let savingsGoals=[];
 const NWS_DEFAULT={groceries:'needs',gas:'needs',utilities:'needs',housing:'needs',healthcare:'needs',auto:'needs',home:'needs',pet:'needs',transfers:'savings',dining:'wants',fastfood:'wants',coffee:'wants',shopping:'wants',subscriptions:'wants',kids:'wants',personal:'wants',other:'wants'};
 function nwsClass(catId){return nwsOverrides[catId]||NWS_DEFAULT[catId]||'wants';}
 let merchantRules={},askLater=new Set();
@@ -515,7 +544,7 @@ async function loadAllData(){
   const [txnRes, ruleRes, settingRes] = await Promise.all([
     db.from('transactions').select('*').order('inserted_at').range(0, 20000),
     db.from('merchant_rules').select('*').range(0, 20000),
-    db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH])
+    db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH,APP_SETTING_GOALS])
   ]);
   if(txnRes.error)console.error('load txns',txnRes.error);
   if(ruleRes.error)console.error('load rules',ruleRes.error);
@@ -542,6 +571,9 @@ async function loadAllData(){
     }
     if(s.key===APP_SETTING_NETWORTH && s.value && typeof s.value==='object'){
       netWorthState={assets:Array.isArray(s.value.assets)?s.value.assets:[],liabilities:Array.isArray(s.value.liabilities)?s.value.liabilities:[],snapshots:Array.isArray(s.value.snapshots)?s.value.snapshots:[]};
+    }
+    if(s.key===APP_SETTING_GOALS && Array.isArray(s.value)){
+      savingsGoals=s.value;
     }
   });
   ensureBudgetStructure();
@@ -583,6 +615,88 @@ async function saveDebtState(){
 async function saveNwsOverrides(){
   const{error}=await db.from('app_settings').upsert({key:APP_SETTING_NWS,value:nwsOverrides,updated_at:new Date().toISOString()});
   if(error)console.error('saveNwsOverrides',error);
+}
+
+// ── Savings Goals (sinking funds) ───────────────────────────────────────────
+async function saveSavingsGoals(){
+  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_GOALS,value:savingsGoals,updated_at:new Date().toISOString()});
+  if(error)console.error('saveSavingsGoals',error);
+}
+function addGoal(){savingsGoals.push({name:'',target:0,saved:0,monthly:0});saveSavingsGoals();renderGoals();}
+function removeGoal(i){savingsGoals.splice(i,1);saveSavingsGoals();renderGoals();}
+function updateGoal(i,field,val){if(!savingsGoals[i])return;savingsGoals[i][field]=field==='name'?val:(parseFloat(val)||0);saveSavingsGoals();renderGoals();}
+function renderGoals(){
+  const inp='padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:12px;outline:none';
+  const totTarget=savingsGoals.reduce((s,g)=>s+(+g.target||0),0);
+  const totSaved=savingsGoals.reduce((s,g)=>s+(+g.saved||0),0);
+  document.getElementById('goalsMetrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Goals</div><div class="metric-value">${savingsGoals.length}</div></div>
+    <div class="metric"><div class="metric-label">Saved so far</div><div class="metric-value pos">${fmt(totSaved)}</div></div>
+    <div class="metric"><div class="metric-label">Total target</div><div class="metric-value">${fmt(totTarget)}</div></div>
+    <div class="metric"><div class="metric-label">Left to save</div><div class="metric-value neg">${fmt(Math.max(0,totTarget-totSaved))}</div></div>`;
+  document.getElementById('goalsList').innerHTML=savingsGoals.length?savingsGoals.map((g,i)=>{
+    const target=+g.target||0,saved=+g.saved||0,monthly=+g.monthly||0;
+    const left=Math.max(0,target-saved);
+    const prog=target>0?Math.min(100,saved/target*100):0;
+    const monthsLeft=monthly>0&&left>0?Math.ceil(left/monthly):(left<=0?0:null);
+    const eta=monthsLeft!==null&&monthsLeft>0?monthsToDate(monthsLeft):(left<=0?'Funded! 🎉':'set a monthly amount');
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <input style="${inp};flex:1" placeholder="Goal (Emergency fund, Disney trip…)" value="${(g.name||'').replace(/"/g,'&quot;')}" onchange="updateGoal(${i},'name',this.value)">
+        <button class="btn-danger" onclick="removeGoal(${i})">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div><div style="font-size:10px;color:var(--text2);margin-bottom:3px">Target ($)</div><input type="number" style="${inp};width:100%" value="${g.target||''}" onchange="updateGoal(${i},'target',this.value)"></div>
+        <div><div style="font-size:10px;color:var(--text2);margin-bottom:3px">Saved ($)</div><input type="number" style="${inp};width:100%" value="${g.saved||''}" onchange="updateGoal(${i},'saved',this.value)"></div>
+        <div><div style="font-size:10px;color:var(--text2);margin-bottom:3px">Per month ($)</div><input type="number" style="${inp};width:100%" value="${g.monthly||''}" onchange="updateGoal(${i},'monthly',this.value)"></div>
+      </div>
+      <div style="height:10px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-bottom:6px"><div style="height:100%;width:${prog}%;background:var(--pos)"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2)"><span>${prog.toFixed(0)}% · ${fmt(left)} to go</span><span>${eta}</span></div>
+    </div>`;
+  }).join(''):'<div class="empty">No goals yet. Add an emergency fund first — it is the best defense against new debt.</div>';
+}
+
+// ── Year / Annual view ──────────────────────────────────────────────────────
+function renderYear(){
+  const sel=document.getElementById('yearSel');
+  const years=[...new Set(allTxns.map(t=>{const p=t.date.split('/');return '20'+(p[2]||'25');}))].sort().reverse();
+  if(sel && sel.options.length!==years.length){
+    sel.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('')||'<option>—</option>';
+  }
+  const yr=sel?sel.value:(years[0]||'');
+  const txns=allTxns.filter(t=>{const p=t.date.split('/');return '20'+(p[2]||'25')===yr;});
+  const income=txns.filter(t=>t.amount>0&&t.cat!=='transfers').reduce((s,t)=>s+t.amount,0);
+  const spend=txns.filter(t=>t.amount<0&&t.cat!=='transfers').reduce((s,t)=>s+t.amount,0);
+  const net=income+spend;
+  const rate=income>0?(net/income*100):0;
+  // monthly nets
+  const byMonth={};
+  txns.forEach(t=>{if(t.cat==='transfers')return;const p=t.date.split('/');const m=p[0].padStart(2,'0');byMonth[m]=(byMonth[m]||0)+t.amount;});
+  const monthsArr=Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0]));
+  let best=null,worst=null;
+  monthsArr.forEach(([m,v])=>{if(best===null||v>best[1])best=[m,v];if(worst===null||v<worst[1])worst=[m,v];});
+  const mName=m=>new Date(2000,parseInt(m)-1,1).toLocaleString('default',{month:'long'});
+  document.getElementById('yearMetrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Income</div><div class="metric-value pos">${fmt(income)}</div></div>
+    <div class="metric"><div class="metric-label">Spending</div><div class="metric-value neg">${fmt(spend)}</div></div>
+    <div class="metric"><div class="metric-label">Net saved</div><div class="metric-value ${net>=0?'pos':'neg'}">${net<0?'-':''}${fmt(net)}</div></div>
+    <div class="metric"><div class="metric-label">Savings rate</div><div class="metric-value ${rate>=0?'pos':'neg'}">${rate.toFixed(0)}%</div></div>`;
+  const maxAbs=Math.max(...monthsArr.map(([,v])=>Math.abs(v)),1);
+  document.getElementById('yearMonths').innerHTML=monthsArr.length?monthsArr.map(([m,v])=>`
+    <div style="margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;font-size:12px"><span>${mName(m)}</span><span style="color:${v>=0?'var(--pos)':'var(--neg)'}">${v<0?'-':'+'}${fmt(v)}</span></div>
+      <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="height:100%;width:${Math.abs(v)/maxAbs*100}%;background:${v>=0?'var(--pos)':'var(--neg)'}"></div></div>
+    </div>`).join('')+`<div style="font-size:12px;color:var(--text2);margin-top:8px">${best?`Best month: <strong>${mName(best[0])}</strong> (${best[1]<0?'-':'+'}${fmt(best[1])})`:''}${worst?` · Toughest: <strong>${mName(worst[0])}</strong>`:''}</div>`:'<div class="empty">No data for this year.</div>';
+  const catMap=getCatMap();
+  const catTot={};
+  txns.filter(t=>t.amount<0&&t.cat!=='transfers').forEach(t=>{catTot[t.cat]=(catTot[t.cat]||0)+Math.abs(t.amount);});
+  const sorted=Object.entries(catTot).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const maxc=sorted.length?sorted[0][1]:1;
+  document.getElementById('yearCats').innerHTML=sorted.length?sorted.map(([c,v])=>`
+    <div style="margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;font-size:12px"><span>${catMap[c]?.label||c}</span><span>${fmt(v)}</span></div>
+      <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="height:100%;width:${v/maxc*100}%;background:${catMap[c]?.color||'#6b7280'}"></div></div>
+    </div>`).join(''):'<div class="empty">No spending this year.</div>';
 }
 
 // ── Net Worth ───────────────────────────────────────────────────────────────
@@ -1687,6 +1801,8 @@ function showTab(tab){
   if(tab==='debt')renderDebtScreen();
   if(tab==='nws')renderNWS();
   if(tab==='networth')renderNetWorth();
+  if(tab==='goals')renderGoals();
+  if(tab==='year')renderYear();
   if(tab==='rules')renderRules();
   if(tab==='review')renderMerchantReview();
   if(tab==='txnreview')renderTxnReview();
