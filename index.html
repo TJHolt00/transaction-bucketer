@@ -2183,9 +2183,10 @@ async function initApp(){
   document.getElementById('importStatus').textContent=allTxns.length>0
     ?`${allTxns.length.toLocaleString()} transactions loaded.${pending>0?' '+pending+' still need review.':''}`
     :'No transactions yet — import a CSV to get started.';
-  if(merchantQueue.length>0){showTab('review');renderMerchantReview();}
-  else if(txnQueue.filter(t=>t.needsReview&&t.txnReview).length>0){showTab('txnreview');renderTxnReview();}
-  else if(allTxns.length>0){showTab('dashboard');renderDashboard();}
+  // Always land on the Dashboard when there's data; review is reachable from the
+  // sidebar badges and the "still need review" link. (Import flow handles its own jump.)
+  if(allTxns.length>0){showTab('dashboard');renderDashboard();}
+  else{showTab('import');}
   document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
   updateBudgetUI();
   setupRealtime();
