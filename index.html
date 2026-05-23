@@ -150,10 +150,11 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .party-active body{transition:background-color .4s}
 /* Sidebar layout */
 .layout{display:flex;gap:22px;align-items:flex-start}
-.sidebar{flex:0 0 190px;position:sticky;top:14px;display:flex;flex-direction:column;gap:16px}
+.sidebar{flex:0 0 200px;position:sticky;top:14px;display:flex;flex-direction:column;gap:6px}
 .content{flex:1;min-width:0}
 .nav-group{display:flex;flex-direction:column;gap:2px}
-.nav-group-label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);font-weight:600;margin:0 0 3px 10px}
+.nav-group:not(:first-child){border-top:1px solid var(--border);margin-top:12px;padding-top:14px}
+.nav-group-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);font-weight:700;margin:0 0 6px 10px}
 .nav-item{display:flex;align-items:center;width:100%;text-align:left;padding:8px 11px;border-radius:8px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;transition:background .12s,color .12s;font-family:inherit}
 .nav-item:hover{background:var(--surface);color:var(--text)}
 .nav-item.active{background:var(--surface2);color:var(--accent);font-weight:600}
