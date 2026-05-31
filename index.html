@@ -151,6 +151,12 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .nav-item{display:flex;align-items:center;width:100%;text-align:left;padding:8px 11px;border-radius:8px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;transition:background .12s,color .12s;font-family:inherit}
 .nav-item:hover{background:var(--surface);color:var(--text)}
 .nav-item.active{background:var(--surface2);color:var(--accent);font-weight:600}
+.workspace-switcher{display:flex;flex-direction:column;gap:6px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.workspace-switcher select{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
+.workspace-new-row{display:flex;gap:6px}
+.workspace-new-row input{flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:12px;outline:none}
+.workspace-new-row button{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer}
+.workspace-new-row button:hover{border-color:var(--accent);color:var(--accent)}
 @media(max-width:760px){
   .layout{flex-direction:column;gap:14px}
   .sidebar{position:static;flex-direction:row;flex-wrap:wrap;gap:6px;width:100%}
@@ -227,6 +233,14 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
   <h1 style="margin-bottom:18px">Transaction Bucketer</h1>
   <div class="layout">
     <nav class="sidebar">
+      <div id="workspaceSwitcher" class="workspace-switcher" style="display:none">
+        <div class="nav-group-label" style="margin-left:0">Workspace</div>
+        <select id="workspaceSel" onchange="switchWorkspace(this.value)"></select>
+        <div class="workspace-new-row">
+          <input type="text" id="newWorkspaceName" placeholder="New workspace" onkeydown="if(event.key==='Enter')createWorkspaceInline()">
+          <button type="button" onclick="createWorkspaceInline()" title="Create workspace">+</button>
+        </div>
+      </div>
       <div class="nav-group">
         <div class="nav-group-label">Overview</div>
         <button class="nav-item active" onclick="showTab('dashboard')" id="tab-dashboard">Dashboard</button>
@@ -618,6 +632,15 @@ let netWorthState={assets:[],liabilities:[],snapshots:[]};
 let savingsGoals=[];
 let recurringBills=[];
 let extrasState={forecast:{initial:1000,monthly:300,roi:7,years:20},challenge:{week:0,noSpend:0}};
+
+// ── Workspaces (feature-detected) ───────────────────────────────────────────
+const LS_WORKSPACE='current_workspace_id';
+let workspacesEnabled=false;
+let workspaces=[];
+let currentWorkspaceId=null;
+function wsAttach(obj){return workspacesEnabled?{...obj,workspace_id:currentWorkspaceId}:obj;}
+function wsAttachAll(arr){return workspacesEnabled?arr.map(o=>({...o,workspace_id:currentWorkspaceId})):arr;}
+function wsFilter(q){return workspacesEnabled?q.eq('workspace_id',currentWorkspaceId):q;}
 const NWS_DEFAULT={groceries:'needs',gas:'needs',utilities:'needs',housing:'needs',healthcare:'needs',auto:'needs',home:'needs',pet:'needs',transfers:'savings',dining:'wants',fastfood:'wants',coffee:'wants',shopping:'wants',subscriptions:'wants',kids:'wants',personal:'wants',other:'wants'};
 function nwsClass(catId){return nwsOverrides[catId]||NWS_DEFAULT[catId]||'wants';}
 let merchantRules={},askLater=new Set();
@@ -630,16 +653,29 @@ function rowToTxn(r){
 }
 
 async function loadAllData(){
+  await loadWorkspaces();
+  if(workspacesEnabled && !currentWorkspaceId){
+    // No workspace selected yet — render switcher and bail; user must pick or create one.
+    renderWorkspaceSwitcher();
+    return;
+  }
   const [txnRes, ruleRes, settingRes] = await Promise.all([
-    db.from('transactions').select('*').order('inserted_at').range(0, 20000),
-    db.from('merchant_rules').select('*').range(0, 20000),
-    db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH,APP_SETTING_GOALS,APP_SETTING_BILLS,APP_SETTING_EXTRAS])
+    wsFilter(db.from('transactions').select('*').order('inserted_at').range(0, 20000)),
+    wsFilter(db.from('merchant_rules').select('*').range(0, 20000)),
+    wsFilter(db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH,APP_SETTING_GOALS,APP_SETTING_BILLS,APP_SETTING_EXTRAS]))
   ]);
   if(txnRes.error)console.error('load txns',txnRes.error);
   if(ruleRes.error)console.error('load rules',ruleRes.error);
   if(settingRes.error)console.error('load settings',settingRes.error);
+  // Reset all per-workspace state so switching workspaces does not bleed state
   allTxns=(txnRes.data||[]).map(rowToTxn);
   merchantRules={};askLater=new Set();
+  debtState={debts:[],strategy:'avalanche',extra:0};
+  nwsOverrides={};
+  netWorthState={assets:[],liabilities:[],snapshots:[]};
+  savingsGoals=[];recurringBills=[];
+  extrasState={forecast:{initial:1000,monthly:300,roi:7,years:20},challenge:{week:0,noSpend:0}};
+  CATS=CATS.filter(c=>DEFAULT_IDS.includes(c.id));
   (ruleRes.data||[]).forEach(r=>{
     if(r.bucket==='__ask_later__')askLater.add(r.keyword);
     else merchantRules[r.keyword]=r.bucket;
@@ -674,47 +710,105 @@ async function loadAllData(){
   ensureBudgetStructure();
 }
 
+// ── Workspace functions (feature-detected) ─────────────────────────────────
+async function loadWorkspaces(){
+  const{data,error}=await db.from('workspaces').select('*').order('created_at');
+  if(error){
+    // Table does not exist → workspaces feature not enabled in this database. Legacy mode.
+    workspacesEnabled=false;workspaces=[];currentWorkspaceId=null;
+    return;
+  }
+  workspacesEnabled=true;
+  workspaces=data||[];
+  if(!workspaces.length){
+    currentWorkspaceId=null;
+    return;
+  }
+  const saved=localStorage.getItem(LS_WORKSPACE);
+  const found=workspaces.find(w=>w.id===saved);
+  currentWorkspaceId=found?found.id:workspaces[0].id;
+  localStorage.setItem(LS_WORKSPACE,currentWorkspaceId);
+}
+
+async function switchWorkspace(id){
+  if(!id||id===currentWorkspaceId)return;
+  currentWorkspaceId=id;
+  localStorage.setItem(LS_WORKSPACE,id);
+  renderWorkspaceSwitcher();
+  await initApp();
+}
+
+async function createWorkspaceInline(){
+  const input=document.getElementById('newWorkspaceName');
+  if(!input)return;
+  const name=(input.value||'').trim();
+  if(!name){input.focus();return;}
+  const{data,error}=await db.from('workspaces').insert({name}).select().single();
+  if(error){alert('Could not create workspace: '+error.message);return;}
+  workspaces.push(data);
+  currentWorkspaceId=data.id;
+  localStorage.setItem(LS_WORKSPACE,currentWorkspaceId);
+  input.value='';
+  renderWorkspaceSwitcher();
+  await initApp();
+}
+
+function renderWorkspaceSwitcher(){
+  const wrap=document.getElementById('workspaceSwitcher');
+  if(!wrap)return;
+  if(!workspacesEnabled){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  const sel=document.getElementById('workspaceSel');
+  if(workspaces.length){
+    sel.innerHTML=workspaces.map(w=>`<option value="${w.id}"${w.id===currentWorkspaceId?' selected':''}>${w.name.replace(/</g,'&lt;')}</option>`).join('');
+    sel.disabled=false;
+  }else{
+    sel.innerHTML='<option>No workspaces yet</option>';
+    sel.disabled=true;
+  }
+}
+
 async function upsertTxns(txnsArr){
   if(!txnsArr||!txnsArr.length)return;
-  const{error}=await db.from('transactions').upsert(txnsArr.map(txnToRow));
+  const{error}=await db.from('transactions').upsert(wsAttachAll(txnsArr.map(txnToRow)));
   if(error)console.error('upsertTxns',error);
 }
 async function upsertRule(mk,cat){
-  const{error}=await db.from('merchant_rules').upsert({keyword:mk,bucket:cat});
+  const{error}=await db.from('merchant_rules').upsert(wsAttach({keyword:mk,bucket:cat}));
   if(error)console.error('upsertRule',error);
   if(cat==='__ask_later__'){askLater.add(mk);}else{merchantRules[mk]=cat;askLater.delete(mk);}
   const rb=document.getElementById('rulesBadge');
   if(rb)rb.textContent=Object.keys(merchantRules).length;
 }
 async function removeRule(mk){
-  const{error}=await db.from('merchant_rules').delete().eq('keyword',mk);
+  const{error}=await wsFilter(db.from('merchant_rules').delete()).eq('keyword',mk);
   if(error)console.error('removeRule',error);
   delete merchantRules[mk];askLater.delete(mk);
 }
 async function saveCustomCats(){
   const custom=CATS.filter(c=>!DEFAULT_IDS.includes(c.id));
-  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_CUSTOM_CATS,value:custom,updated_at:new Date().toISOString()});
+  const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_CUSTOM_CATS,value:custom,updated_at:new Date().toISOString()}));
   if(error)console.error('saveCustomCats',error);
 }
 
 async function saveBudgetTargets(){
-  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_BUDGETS,value:budgetTargets,updated_at:new Date().toISOString()});
+  const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_BUDGETS,value:budgetTargets,updated_at:new Date().toISOString()}));
   if(error)console.error('saveBudgetTargets',error);
 }
 
 async function saveDebtState(){
-  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_DEBTS,value:debtState,updated_at:new Date().toISOString()});
+  const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_DEBTS,value:debtState,updated_at:new Date().toISOString()}));
   if(error)console.error('saveDebtState',error);
 }
 
 async function saveNwsOverrides(){
-  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_NWS,value:nwsOverrides,updated_at:new Date().toISOString()});
+  const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_NWS,value:nwsOverrides,updated_at:new Date().toISOString()}));
   if(error)console.error('saveNwsOverrides',error);
 }
 
 // ── Challenge + Forecast (extras) ───────────────────────────────────────────
 async function saveExtras(){
-  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_EXTRAS,value:extrasState,updated_at:new Date().toISOString()});
+  const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_EXTRAS,value:extrasState,updated_at:new Date().toISOString()}));
   if(error)console.error('saveExtras',error);
 }
 function updateChallenge(field,val){
@@ -756,7 +850,7 @@ function renderForecast(){
 
 // ── Recurring Bills ─────────────────────────────────────────────────────────
 async function saveRecurringBills(){
-  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_BILLS,value:recurringBills,updated_at:new Date().toISOString()});
+  const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_BILLS,value:recurringBills,updated_at:new Date().toISOString()}));
   if(error)console.error('saveRecurringBills',error);
 }
 function addBill(){recurringBills.push({name:'',amount:0,dueDay:1});saveRecurringBills();renderBills();}
@@ -793,7 +887,7 @@ function renderBills(){
 
 // ── Savings Goals (sinking funds) ───────────────────────────────────────────
 async function saveSavingsGoals(){
-  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_GOALS,value:savingsGoals,updated_at:new Date().toISOString()});
+  const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_GOALS,value:savingsGoals,updated_at:new Date().toISOString()}));
   if(error)console.error('saveSavingsGoals',error);
 }
 function addGoal(){savingsGoals.push({name:'',target:0,saved:0,monthly:0});saveSavingsGoals();renderGoals();}
@@ -875,7 +969,7 @@ function renderYear(){
 
 // ── Net Worth ───────────────────────────────────────────────────────────────
 async function saveNetWorthState(){
-  const{error}=await db.from('app_settings').upsert({key:APP_SETTING_NETWORTH,value:netWorthState,updated_at:new Date().toISOString()});
+  const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_NETWORTH,value:netWorthState,updated_at:new Date().toISOString()}));
   if(error)console.error('saveNetWorthState',error);
 }
 function addAsset(){netWorthState.assets.push({name:'',value:0});saveNetWorthState();renderNetWorth();}
@@ -1587,7 +1681,7 @@ async function loadFile(text){
 
 async function clearAllData(){
   if(!confirm("Clear ALL saved transactions for the shared account? Your merchant rules will be kept.\n\nThis cannot be undone."))return;
-  const{error}=await db.from('transactions').delete().gte('inserted_at','1900-01-01');
+  const{error}=await wsFilter(db.from('transactions').delete()).gte('inserted_at','1900-01-01');
   if(error){alert('Failed to clear: '+error.message);return;}
   allTxns=[];
   window.location.reload();
@@ -2045,6 +2139,13 @@ function setupRealtime(){
 async function initApp(){
   document.getElementById('importStatus').textContent='Loading your data…';
   await loadAllData();
+  renderWorkspaceSwitcher();
+  if(workspacesEnabled && !currentWorkspaceId){
+    // No workspace selected — prompt user to create their first one.
+    document.getElementById('importStatus').textContent='Create your first workspace in the sidebar to get started.';
+    showTab('import');
+    return;
+  }
   merchantQueue=buildMerchantQueue(allTxns);
   txnQueue=buildTxnQueue(allTxns);
   updateBadges();populateMonths();populateBudgetPlans();populateCatFilter();
