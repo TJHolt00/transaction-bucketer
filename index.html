@@ -121,6 +121,21 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .txn-amt{font-size:12px;font-weight:500;min-width:64px;text-align:right;flex-shrink:0}
 .txn-amt.neg{color:var(--neg)}
 .txn-amt.pos{color:var(--pos)}
+.txn-actions{display:flex;gap:4px;flex-shrink:0}
+.btn-icon{padding:3px 7px;border-radius:6px;font-size:11px;cursor:pointer;background:none;border:1px solid var(--border);color:var(--text2);line-height:1;transition:all .15s}
+.btn-icon:hover{border-color:var(--text);color:var(--text)}
+.btn-icon.del:hover{border-color:var(--neg);color:var(--neg)}
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 24px;width:100%;max-width:420px;margin:16px}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:20px}
+.modal-field{margin-bottom:14px}
+.modal-field label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px}
+.modal-field input,.modal-field select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
+.modal-field input:focus,.modal-field select:focus{border-color:var(--accent)}
+.modal-row{display:flex;gap:8px}
+.modal-row .modal-field{flex:1}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
 .empty{padding:32px;text-align:center;color:var(--text2);font-size:13px}
 .page-row{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:12px;color:var(--text2)}
 .page-row button{padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:11px}
@@ -374,6 +389,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
             <option value="desc_az">Sort: Description A–Z</option>
             <option value="cat_az">Sort: Category A–Z</option>
           </select>
+          <button class="btn btn-primary" style="padding:7px 14px;font-size:12px;white-space:nowrap" onclick="openTxnModal()">+ Add</button>
         </div>
         <div id="txnList"></div>
         <div class="page-row">
@@ -1917,6 +1933,10 @@ function renderDashboard(){
       <input class="txn-note" placeholder="note…" value="${t.note}" onchange="setNote('${t.id}',this.value)">
       <select class="txn-cat" onchange="changeTxnCat('${t.id}',this.value)">${CATS.map(c=>`<option value="${c.id}"${c.id===t.cat?' selected':''}>${c.label}</option>`).join('')}</select>
       <span class="txn-amt ${t.amount<0?'neg':'pos'}">${t.amount<0?'-':'+'}${fmt(t.amount)}</span>
+      <div class="txn-actions">
+        <button class="btn-icon" title="Edit" onclick="openTxnModal('${t.id}')">✏</button>
+        <button class="btn-icon del" title="Delete" onclick="deleteTxn('${t.id}')">🗑</button>
+      </div>
     </div>`).join(''):'<div class="empty">No transactions match your filters</div>';
   const total=txns.length,totalPages=Math.ceil(total/PER_PAGE);
   document.getElementById('pageInfo').textContent=total?`${start+1}–${Math.min(start+PER_PAGE,total)} of ${total}`:'0 results';
@@ -2240,6 +2260,90 @@ document.addEventListener('DOMContentLoaded',async()=>{
   const{data:{session}}=await db.auth.getSession();
   if(session){await showApp();}
 });
+
+// ── Transaction modal (add / edit) ──────────────────────────────────────────
+function openTxnModal(id){
+  const t=id?allTxns.find(x=>x.id===id):null;
+  // Build category options
+  const catOpts=CATS.map(c=>`<option value="${c.id}"${t&&t.cat===c.id?' selected':''}>${c.label}</option>`).join('');
+  // Default date = today in M/D/YY
+  const today=new Date();
+  const defDate=`${today.getMonth()+1}/${today.getDate()}/${String(today.getFullYear()).slice(2)}`;
+  const overlay=document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.id='txnModalOverlay';
+  overlay.innerHTML=`
+    <div class="modal-box">
+      <div class="modal-title">${t?'Edit Transaction':'Add Transaction'}</div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label>Date (M/D/YY)</label>
+          <input id="mDate" type="text" placeholder="e.g. 5/31/25" value="${t?t.date:defDate}">
+        </div>
+        <div class="modal-field">
+          <label>Amount (negative = expense)</label>
+          <input id="mAmt" type="number" step="0.01" placeholder="-42.50" value="${t?t.amount:''}">
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Description</label>
+        <input id="mDesc" type="text" placeholder="e.g. Walmart, Direct Deposit" value="${t?t.desc:''}">
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label>Category</label>
+          <select id="mCat">${catOpts}</select>
+        </div>
+        <div class="modal-field">
+          <label>Note (optional)</label>
+          <input id="mNote" type="text" placeholder="e.g. birthday gift" value="${t?t.note:''}">
+        </div>
+      </div>
+      <div class="modal-btns">
+        <button class="btn btn-secondary" onclick="closeTxnModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveTxnModal('${id||''}')">Save</button>
+      </div>
+    </div>`;
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closeTxnModal();});
+  document.body.appendChild(overlay);
+  document.getElementById('mDesc').focus();
+}
+
+function closeTxnModal(){
+  const el=document.getElementById('txnModalOverlay');
+  if(el)el.remove();
+}
+
+async function saveTxnModal(id){
+  const date=document.getElementById('mDate').value.trim();
+  const desc=document.getElementById('mDesc').value.trim();
+  const amt=parseFloat(document.getElementById('mAmt').value);
+  const cat=document.getElementById('mCat').value;
+  const note=document.getElementById('mNote').value.trim();
+  if(!date||!desc||isNaN(amt)){alert('Date, description, and amount are required.');return;}
+  if(id){
+    // Edit existing
+    const t=allTxns.find(x=>x.id===id);
+    if(!t)return;
+    t.date=date;t.desc=desc;t.amount=amt;t.cat=cat;t.note=note;
+    await upsertTxns([t]);
+  } else {
+    // Add new
+    const newT={id:crypto.randomUUID(),date,desc,amount:amt,cat,note,needsReview:false,txnReview:false,confident:true,format:'manual'};
+    allTxns.push(newT);
+    await upsertTxns([newT]);
+  }
+  closeTxnModal();
+  updateBadges();renderDashboard();
+}
+
+async function deleteTxn(id){
+  if(!confirm('Delete this transaction? This cannot be undone.'))return;
+  const{error}=await wsFilter(db.from('transactions').delete()).eq('id',id);
+  if(error){alert('Delete failed: '+error.message);return;}
+  allTxns=allTxns.filter(t=>t.id!==id);
+  updateBadges();renderDashboard();
+}
 </script>
 </body>
 </html>
