@@ -377,7 +377,13 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
         <label for="budgetPlanSel">Budget plan</label>
         <div class="budget-plan-row">
           <select id="budgetPlanSel"></select>
-          <button class="btn btn-secondary" onclick="promptNewBudgetPlan()">New plan</button>
+        </div>
+      </div>
+      <div class="budget-field-row">
+        <label for="newPlanName">Start a new plan</label>
+        <div class="budget-plan-row">
+          <input type="text" id="newPlanName" placeholder="e.g. 2026 Budget" onkeydown="if(event.key==='Enter')createPlanInline()" style="flex:1">
+          <button class="btn btn-secondary" onclick="createPlanInline()">+ Create</button>
         </div>
       </div>
       <div class="budget-field-row budget-plan-meta-row">
@@ -1185,6 +1191,21 @@ async function promptNewBudgetPlan(){
   await saveBudgetTargets();
   if(document.getElementById('budgetPlanSel'))populateBudgetPlans();
   if(document.getElementById('budgetMonthSel'))renderBudgetScreen();
+}
+
+async function createPlanInline(){
+  const input=document.getElementById('newPlanName');
+  const safe=(input.value||'').trim();
+  if(!safe){input.focus();return;}
+  if(budgetTargets.plans[safe]){alert('A plan with that name already exists.');input.select();return;}
+  budgetTargets.plans[safe]=createBudgetPlan(safe);
+  budgetTargets.active=safe;
+  await saveBudgetTargets();
+  input.value='';
+  populateBudgetPlans();
+  renderBudgetScreen();
+  updateBudgetUI();
+  renderDashboard();
 }
 
 async function promptRenameBudgetPlan(){
