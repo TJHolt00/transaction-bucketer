@@ -170,6 +170,15 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .workspace-switcher select{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
 .workspace-new-row{display:flex;gap:6px}
 .workspace-new-row input{flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:12px;outline:none}
+.workspace-members-section{margin-top:8px}
+.workspace-members-section .ws-label{font-size:11px;color:var(--text2);margin-bottom:5px}
+.workspace-member-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;padding:3px 0;gap:6px}
+.workspace-member-email{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2)}
+.workspace-member-role{font-size:10px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;flex-shrink:0}
+.workspace-add-row{display:flex;gap:5px;margin-top:6px}
+.workspace-add-row input{flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:12px;outline:none}
+.workspace-add-row input:focus{border-color:var(--accent)}
+.ws-msg{font-size:11px;margin-top:4px;min-height:14px}
 .workspace-new-row button{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer}
 .workspace-new-row button:hover{border-color:var(--accent);color:var(--accent)}
 @media(max-width:760px){
@@ -254,6 +263,15 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
         <div class="workspace-new-row">
           <input type="text" id="newWorkspaceName" placeholder="New workspace" onkeydown="if(event.key==='Enter')createWorkspaceInline()">
           <button type="button" onclick="createWorkspaceInline()" title="Create workspace">+</button>
+        </div>
+        <div class="workspace-members-section" id="wsMembersSection" style="display:none">
+          <div class="ws-label">Members</div>
+          <div id="wsMemberList"></div>
+          <div class="workspace-add-row">
+            <input type="email" id="wsInviteEmail" placeholder="Add by email…" onkeydown="if(event.key==='Enter')addWorkspaceMember()">
+            <button type="button" onclick="addWorkspaceMember()" title="Add member" style="padding:5px 10px;border-radius:6px;background:var(--accent);color:#000;border:none;font-size:12px;cursor:pointer;font-weight:500">Add</button>
+          </div>
+          <div class="ws-msg" id="wsMemberMsg"></div>
         </div>
       </div>
       <div class="nav-group">
@@ -782,6 +800,55 @@ function renderWorkspaceSwitcher(){
     sel.innerHTML='<option>No workspaces yet</option>';
     sel.disabled=true;
   }
+  if(currentWorkspaceId)loadWorkspaceMembers();
+}
+
+async function loadWorkspaceMembers(){
+  const section=document.getElementById('wsMembersSection');
+  const list=document.getElementById('wsMemberList');
+  if(!section||!list)return;
+  const{data,error}=await db.from('workspace_members').select('user_id,role').eq('workspace_id',currentWorkspaceId);
+  if(error){section.style.display='none';return;}
+  section.style.display='block';
+  if(!data||!data.length){list.innerHTML='<div class="workspace-member-row"><span class="workspace-member-email" style="color:var(--text2)">No members yet</span></div>';return;}
+  // Fetch emails from auth.users via RPC if available, else show user_id truncated
+  list.innerHTML=data.map(m=>`
+    <div class="workspace-member-row">
+      <span class="workspace-member-email" title="${m.user_id}">${m.user_id===currentUserId?'You':m.user_id.substring(0,8)+'…'}</span>
+      <span class="workspace-member-role">${m.role||'member'}</span>
+    </div>`).join('');
+}
+
+async function addWorkspaceMember(){
+  const input=document.getElementById('wsInviteEmail');
+  const msg=document.getElementById('wsMemberMsg');
+  const email=input.value.trim().toLowerCase();
+  if(!email){msg.style.color='var(--neg)';msg.textContent='Enter an email address.';return;}
+  msg.style.color='var(--text2)';msg.textContent='Looking up user…';
+  // Look up the user by email using admin RPC (requires a Supabase function)
+  // Fallback: invite via Supabase auth
+  const{data:invData,error:invErr}=await db.auth.admin?db.auth.admin.inviteUserByEmail(email):
+    {data:null,error:{message:'Admin API not available in browser'}};
+  if(invErr){
+    // Try inserting directly if we can look up by email via a custom RPC
+    const{data:rpcData,error:rpcErr}=await db.rpc('get_user_id_by_email',{email_input:email});
+    if(rpcErr||!rpcData){
+      msg.style.color='var(--neg)';
+      msg.textContent='User not found. They need to create an account first, then you can add them.';
+      return;
+    }
+    const userId=rpcData;
+    const{error:insertErr}=await db.from('workspace_members').insert({workspace_id:currentWorkspaceId,user_id:userId,role:'member'});
+    if(insertErr){msg.style.color='var(--neg)';msg.textContent=insertErr.message;return;}
+    msg.style.color='var(--pos)';msg.textContent='Added!';
+    input.value='';
+    setTimeout(()=>{msg.textContent='';},3000);
+    loadWorkspaceMembers();
+    return;
+  }
+  msg.style.color='var(--pos)';msg.textContent='Invite sent to '+email+'!';
+  input.value='';
+  setTimeout(()=>{msg.textContent='';},4000);
 }
 
 async function upsertTxns(txnsArr){
@@ -1496,11 +1563,12 @@ async function signOut(){
   await db.auth.signOut();
   location.reload();
 }
+let currentUserId=null;
 async function showApp(){
   document.getElementById('authScreen').style.display='none';
   document.getElementById('mainApp').style.display='block';
   const{data:{session}}=await db.auth.getSession();
-  if(session)document.getElementById('syncLabel').textContent='Signed in as '+session.user.email;
+  if(session){document.getElementById('syncLabel').textContent='Signed in as '+session.user.email;currentUserId=session.user.id;}
   await initApp();
 }
 
