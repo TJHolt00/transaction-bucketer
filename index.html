@@ -805,7 +805,7 @@ async function createWorkspaceInline(){
   const existingRuleCount=Object.keys(merchantRules).length;
   let copyRules=false;
   if(existingRuleCount>0){
-    copyRules=confirm(`Want to bring your ${existingRuleCount} merchant rules into "${name}"?\n\nOK — Yes, copy them over (great for a shared or similar workspace)\nCancel — No thanks, start fresh`);
+    copyRules=confirm(`Copy your ${existingRuleCount} merchant rules into "${name}"?`);
   }
   const sourceWorkspaceId=currentWorkspaceId;
   const{data,error}=await db.from('workspaces').insert({name}).select().single();
