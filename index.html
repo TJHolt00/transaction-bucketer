@@ -145,15 +145,20 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .rule-merchant{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rule-arrow{color:var(--text2);font-size:12px}
 .rule-cat{font-size:12px;font-weight:500}
-.auth-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
-.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:36px 32px;width:100%;max-width:380px}
-.auth-card h2{font-size:18px;font-weight:600;margin-bottom:4px}
-.auth-card .auth-sub{font-size:13px;color:var(--text2);margin-bottom:24px}
-.auth-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
-.auth-field label{font-size:12px;color:var(--text2)}
-.auth-field input{padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px;outline:none}
-.auth-field input:focus{border-color:var(--accent)}
-.auth-error{font-size:12px;color:var(--neg);margin-bottom:12px;display:none;padding:8px 10px;background:#2a0a0a;border:1px solid #4a1010;border-radius:6px}
+.auth-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0f0f1a 0%,#131320 40%,#0d1a2e 100%);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.auth-card{background:#fff;border-radius:16px;padding:44px 40px;width:100%;max-width:420px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.auth-card .auth-logo{font-size:22px;font-weight:700;color:#0f0f14;margin-bottom:6px;letter-spacing:-.3px}
+.auth-card .auth-logo span{color:var(--accent)}
+.auth-card h2{font-size:26px;font-weight:700;color:#0f0f14;margin-bottom:6px}
+.auth-card .auth-sub{font-size:14px;color:#666;margin-bottom:28px}
+.auth-field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.auth-field label{font-size:13px;font-weight:500;color:#333}
+.auth-field input{padding:12px 14px;border:1.5px solid #e0e0e0;border-radius:10px;background:#f9f9f9;color:#0f0f14;font-size:14px;outline:none;transition:border-color .15s}
+.auth-field input:focus{border-color:var(--accent);background:#fff}
+.auth-error{font-size:13px;color:#c0392b;margin-bottom:14px;display:none;padding:10px 12px;background:#fff0f0;border:1px solid #fcc;border-radius:8px}
+.auth-btn{width:100%;padding:13px;border-radius:10px;background:var(--accent);color:#000;border:none;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s;margin-top:4px}
+.auth-btn:hover{background:#89d4ff}
+.auth-btn:disabled{opacity:.5;cursor:default}
 .sync-status{font-size:11px;color:var(--text2);font-weight:500}
 .sync-status.live{color:var(--pos)}
 /* Sidebar layout */
@@ -221,8 +226,9 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 
 <div id="authScreen" class="auth-screen">
   <div class="auth-card">
-    <h2>Transaction Bucketer</h2>
-    <p class="auth-sub">Sign in to access your shared account</p>
+    <div class="auth-logo">Transaction <span>Bucketer</span></div>
+    <h2>Welcome back</h2>
+    <p class="auth-sub">Sign in to your household account</p>
     <div class="auth-field">
       <label>Email</label>
       <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email">
@@ -232,7 +238,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
       <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
     </div>
     <div id="authError" class="auth-error"></div>
-    <button class="btn btn-primary" onclick="signIn()" id="signInBtn" style="width:100%;padding:10px">Sign in</button>
+    <button class="auth-btn" onclick="signIn()" id="signInBtn">Sign in</button>
   </div>
 </div>
 
@@ -249,7 +255,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
       <input type="password" id="newPassword2" placeholder="Re-enter password" autocomplete="new-password" onkeydown="if(event.key==='Enter')setNewPassword()">
     </div>
     <div id="setPwError" class="auth-error"></div>
-    <button class="btn btn-primary" onclick="setNewPassword()" id="setPwBtn" style="width:100%;padding:10px">Set password &amp; continue</button>
+    <button class="auth-btn" onclick="setNewPassword()" id="setPwBtn">Set password &amp; continue</button>
   </div>
 </div>
 
