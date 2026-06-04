@@ -188,8 +188,8 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .workspace-add-row input{flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:12px;outline:none}
 .workspace-add-row input:focus{border-color:var(--accent)}
 .ws-msg{font-size:11px;margin-top:4px;min-height:14px}
-.workspace-new-row button{padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
-.workspace-new-row button:hover{border-color:var(--accent);color:var(--accent)}
+.workspace-new-row button{padding:7px 12px;border:none;border-radius:8px;background:var(--accent);color:#000;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.workspace-new-row button:hover{background:#89d4ff}
 @media(max-width:760px){
   .layout{flex-direction:column;gap:14px}
   .sidebar{position:static;flex-direction:row;flex-wrap:wrap;gap:6px;width:100%}
@@ -270,16 +270,19 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
       <div id="workspaceSwitcher" class="workspace-switcher" style="display:none">
         <div class="nav-group-label" style="margin-left:0">Workspace</div>
         <select id="workspaceSel" onchange="switchWorkspace(this.value)"></select>
-        <div class="workspace-new-row">
-          <input type="text" id="newWorkspaceName" placeholder="New workspace" onkeydown="if(event.key==='Enter')createWorkspaceInline()">
-          <button type="button" onclick="createWorkspaceInline()" title="Create workspace">+</button>
+        <button class="nav-item" style="font-size:12px;color:var(--text2);margin-top:2px" onclick="toggleNewWorkspace()">+ New workspace</button>
+        <div id="newWorkspaceRow" style="display:none;margin-top:4px">
+          <div class="workspace-new-row">
+            <input type="text" id="newWorkspaceName" placeholder="e.g. Chase Account" onkeydown="if(event.key==='Enter')createWorkspaceInline()">
+            <button type="button" onclick="createWorkspaceInline()">Create</button>
+          </div>
         </div>
         <div class="workspace-members-section" id="wsMembersSection" style="display:none">
           <div class="ws-label">Members</div>
           <div id="wsMemberList"></div>
           <div class="workspace-add-row">
             <input type="email" id="wsInviteEmail" placeholder="Add by email…" onkeydown="if(event.key==='Enter')addWorkspaceMember()">
-            <button type="button" onclick="addWorkspaceMember()" title="Add member" style="padding:5px 10px;border-radius:6px;background:var(--accent);color:#000;border:none;font-size:12px;cursor:pointer;font-weight:500">Add</button>
+            <button type="button" onclick="addWorkspaceMember()" style="padding:7px 10px;border-radius:8px;background:var(--accent);color:#000;border:none;font-size:12px;cursor:pointer;font-weight:500">Add</button>
           </div>
           <div class="ws-msg" id="wsMemberMsg"></div>
         </div>
@@ -784,6 +787,14 @@ async function switchWorkspace(id){
   await initApp();
 }
 
+function toggleNewWorkspace(){
+  const row=document.getElementById('newWorkspaceRow');
+  if(!row)return;
+  const visible=row.style.display!=='none';
+  row.style.display=visible?'none':'block';
+  if(!visible)document.getElementById('newWorkspaceName').focus();
+}
+
 async function createWorkspaceInline(){
   const input=document.getElementById('newWorkspaceName');
   if(!input)return;
@@ -802,6 +813,7 @@ async function createWorkspaceInline(){
   currentWorkspaceId=data.id;
   localStorage.setItem(LS_WORKSPACE,currentWorkspaceId);
   input.value='';
+  const nr=document.getElementById('newWorkspaceRow');if(nr)nr.style.display='none';
   // Copy rules if user agreed
   if(copyRules&&existingRuleCount>0){
     const rules=Object.entries(merchantRules).map(([keyword,bucket])=>({keyword,bucket,workspace_id:data.id}));
