@@ -172,12 +172,15 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .nav-item{display:flex;align-items:center;width:100%;text-align:left;padding:8px 11px;border-radius:8px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;transition:background .12s,color .12s;font-family:inherit}
 .nav-item:hover{background:var(--surface);color:var(--text)}
 .nav-item.active{background:var(--surface2);color:var(--accent);font-weight:600}
-.workspace-switcher{display:flex;flex-direction:column;gap:6px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:6px}
-.workspace-switcher select{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
+.workspace-switcher{display:flex;flex-direction:column;gap:8px;padding:0 0 16px 0;border-bottom:1px solid var(--border);margin-bottom:12px}
+.workspace-switcher .nav-group-label{margin-bottom:2px}
+.workspace-switcher select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;outline:none}
+.workspace-switcher select:focus{border-color:var(--accent)}
 .workspace-new-row{display:flex;gap:6px}
-.workspace-new-row input{flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:12px;outline:none}
-.workspace-members-section{margin-top:8px}
-.workspace-members-section .ws-label{font-size:11px;color:var(--text2);margin-bottom:5px}
+.workspace-new-row input{flex:1;min-width:0;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;outline:none}
+.workspace-new-row input:focus{border-color:var(--accent)}
+.workspace-members-section{margin-top:4px;padding-top:10px;border-top:1px solid var(--border)}
+.workspace-members-section .ws-label{font-size:11px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
 .workspace-member-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;padding:3px 0;gap:6px}
 .workspace-member-email{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2)}
 .workspace-member-role{font-size:10px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;flex-shrink:0}
@@ -185,7 +188,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .workspace-add-row input{flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:12px;outline:none}
 .workspace-add-row input:focus{border-color:var(--accent)}
 .ws-msg{font-size:11px;margin-top:4px;min-height:14px}
-.workspace-new-row button{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer}
+.workspace-new-row button{padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
 .workspace-new-row button:hover{border-color:var(--accent);color:var(--accent)}
 @media(max-width:760px){
   .layout{flex-direction:column;gap:14px}
