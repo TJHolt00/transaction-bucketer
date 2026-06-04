@@ -10,6 +10,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0f0f14;--surface:#1a1a24;--surface2:#22222f;--border:#2e2e3e;--text:#e8e8f0;--text2:#888899;--accent:#66c2fa;--pos:#34d399;--neg:#f87171;--warn:#fbbf24;--radius:10px;--font:'Inter',system-ui,sans-serif}
+body.light-mode{--bg:#f4f5f7;--surface:#ffffff;--surface2:#f0f1f4;--border:#dde0e8;--text:#1a1a2e;--text2:#6b7280;--accent:#2563eb;--pos:#16a34a;--neg:#dc2626;--warn:#d97706}
 body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;min-height:100vh}
 .app{max-width:1100px;margin:0 auto;padding:24px 20px}
 h1{font-size:20px;font-weight:600;margin-bottom:4px}
@@ -2440,6 +2441,18 @@ async function openAccountSettings(){
       </div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:20px">Used to personalize your experience.</div>
 
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:20px">
+        <div>
+          <div style="font-size:13px;font-weight:500">Light mode</div>
+          <div style="font-size:12px;color:var(--text2)">Switch to a light color scheme</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
+          <input type="checkbox" id="lightModeToggle" ${localStorage.getItem('lightMode')==='1'?'checked':''} onchange="applyLightMode(this.checked)" style="opacity:0;width:0;height:0">
+          <span style="position:absolute;inset:0;background:var(--border);border-radius:24px;transition:.2s"></span>
+          <span id="lightModeThumb" style="position:absolute;left:${localStorage.getItem('lightMode')==='1'?'22':'2'}px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></span>
+        </label>
+      </div>
+
       <div style="border-top:1px solid var(--border);padding-top:18px;margin-bottom:18px">
         <div style="font-size:13px;font-weight:600;margin-bottom:14px">Change Password</div>
         <div class="modal-field">
@@ -2494,6 +2507,17 @@ function confirmSignOut(){
   closeAccountModal();
   signOut();
 }
+
+function applyLightMode(on){
+  localStorage.setItem('lightMode', on?'1':'0');
+  document.body.classList.toggle('light-mode', on);
+  const thumb=document.getElementById('lightModeThumb');
+  const track=thumb?.previousElementSibling;
+  if(thumb)thumb.style.left=on?'22px':'2px';
+  if(track)track.style.background=on?'var(--accent)':'var(--border)';
+}
+// Apply on load
+if(localStorage.getItem('lightMode')==='1')document.body.classList.add('light-mode');
 
 function updateGreeting(){
   const name=localStorage.getItem('displayName');
