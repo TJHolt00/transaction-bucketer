@@ -777,12 +777,25 @@ async function createWorkspaceInline(){
   if(!input)return;
   const name=(input.value||'').trim();
   if(!name){input.focus();return;}
+  // Check if there are existing rules to offer copying
+  const existingRuleCount=Object.keys(merchantRules).length;
+  let copyRules=false;
+  if(existingRuleCount>0){
+    copyRules=confirm(`Copy the ${existingRuleCount} merchant rules from "${workspaces.find(w=>w.id===currentWorkspaceId)?.name||'current workspace'}" into "${name}"?\n\nClick OK to copy rules (recommended if this is a shared/family workspace).\nClick Cancel to start fresh with no rules.`);
+  }
+  const sourceWorkspaceId=currentWorkspaceId;
   const{data,error}=await db.from('workspaces').insert({name}).select().single();
   if(error){alert('Could not create workspace: '+error.message);return;}
   workspaces.push(data);
   currentWorkspaceId=data.id;
   localStorage.setItem(LS_WORKSPACE,currentWorkspaceId);
   input.value='';
+  // Copy rules if user agreed
+  if(copyRules&&existingRuleCount>0){
+    const rules=Object.entries(merchantRules).map(([keyword,bucket])=>({keyword,bucket,workspace_id:data.id}));
+    const{error:rErr}=await db.from('merchant_rules').insert(rules);
+    if(rErr)console.error('copy rules error',rErr);
+  }
   renderWorkspaceSwitcher();
   await initApp();
 }
