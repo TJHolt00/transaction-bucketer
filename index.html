@@ -801,13 +801,14 @@ async function createWorkspaceInline(){
   if(!input)return;
   const name=(input.value||'').trim();
   if(!name){input.focus();return;}
-  // Check if there are existing rules to offer copying
-  const existingRuleCount=Object.keys(merchantRules).length;
-  let copyRules=false;
-  if(existingRuleCount>0){
-    copyRules=confirm(`Copy your ${existingRuleCount} merchant rules into "${name}"?`);
-  }
-  const sourceWorkspaceId=currentWorkspaceId;
+  // If any workspaces have rules, ask which to copy from
+  const workspacesWithRules=workspaces.filter(w=>{
+    // Only offer workspaces other than the one being created; we know current has rules if merchantRules has entries
+    return w.id===currentWorkspaceId&&Object.keys(merchantRules).length>0;
+  });
+  // Show custom modal, wait for user choice
+  const sourceId=await promptCopyRulesModal(name, workspaces);
+  // Create the workspace
   const{data,error}=await db.from('workspaces').insert({name}).select().single();
   if(error){alert('Could not create workspace: '+error.message);return;}
   workspaces.push(data);
@@ -815,14 +816,59 @@ async function createWorkspaceInline(){
   localStorage.setItem(LS_WORKSPACE,currentWorkspaceId);
   input.value='';
   const nr=document.getElementById('newWorkspaceRow');if(nr)nr.style.display='none';
-  // Copy rules if user agreed
-  if(copyRules&&existingRuleCount>0){
-    const rules=Object.entries(merchantRules).map(([keyword,bucket])=>({keyword,bucket,workspace_id:data.id}));
-    const{error:rErr}=await db.from('merchant_rules').insert(rules);
-    if(rErr)console.error('copy rules error',rErr);
+  // Copy rules from chosen workspace if user picked one
+  if(sourceId){
+    const{data:srcRules}=await db.from('merchant_rules').select('keyword,bucket').eq('workspace_id',sourceId);
+    if(srcRules&&srcRules.length){
+      const rules=srcRules.map(r=>({keyword:r.keyword,bucket:r.bucket,workspace_id:data.id}));
+      const{error:rErr}=await db.from('merchant_rules').insert(rules);
+      if(rErr)console.error('copy rules error',rErr);
+    }
   }
   renderWorkspaceSwitcher();
   await initApp();
+}
+
+function promptCopyRulesModal(newName, allWorkspaces){
+  return new Promise(resolve=>{
+    const overlay=document.createElement('div');
+    overlay.className='modal-overlay';
+    overlay.id='copyRulesModalOverlay';
+    const wsOpts=allWorkspaces.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+    overlay.innerHTML=`
+      <div class="modal-box" style="max-width:400px">
+        <div class="modal-title" style="font-size:15px">Set up "${newName}"</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:20px">Would you like to copy merchant rules from one of your existing workspaces into this new one?</p>
+        <div id="copyRulesYesSection" style="display:none">
+          <div class="modal-field">
+            <label>Copy rules from</label>
+            <select id="copyRulesSource">${wsOpts}</select>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <button class="btn btn-secondary" style="flex:1" id="copyRulesNoBtn">No thanks, start fresh</button>
+          <button class="btn btn-primary" style="flex:1" id="copyRulesYesBtn">Yes, copy rules</button>
+        </div>
+        <div id="copyRulesConfirmRow" style="display:none">
+          <div class="modal-btns">
+            <button class="btn btn-secondary" onclick="document.getElementById('copyRulesYesSection').style.display='none';document.getElementById('copyRulesConfirmRow').style.display='none'">Back</button>
+            <button class="btn btn-primary" id="copyRulesConfirmBtn">Copy &amp; continue</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    document.getElementById('copyRulesNoBtn').onclick=()=>{overlay.remove();resolve(null);};
+    document.getElementById('copyRulesYesBtn').onclick=()=>{
+      document.getElementById('copyRulesYesSection').style.display='block';
+      document.getElementById('copyRulesConfirmRow').style.display='block';
+      document.getElementById('copyRulesYesBtn').style.display='none';
+      document.getElementById('copyRulesNoBtn').style.display='none';
+    };
+    document.getElementById('copyRulesConfirmBtn').onclick=()=>{
+      const src=document.getElementById('copyRulesSource').value;
+      overlay.remove();resolve(src||null);
+    };
+  });
 }
 
 function renderWorkspaceSwitcher(){
