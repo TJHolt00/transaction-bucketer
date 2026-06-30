@@ -645,23 +645,28 @@ const SUPABASE_KEY = 'sb_publishable_MNjjUEGVKAMEzTqxZnEqGQ_YT0YYqfq';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let CATS=[
-  {id:'groceries',label:'Groceries',color:'#1d9e75'},
-  {id:'dining',label:'Dining / Restaurants',color:'#fb923c'},
-  {id:'fastfood',label:'Fast food',color:'#f97316'},
-  {id:'coffee',label:'Coffee',color:'#c47b2b'},
-  {id:'gas',label:'Gas / Transport',color:'#378add'},
-  {id:'utilities',label:'Utilities',color:'#a78bfa'},
-  {id:'housing',label:'Housing / Mortgage',color:'#ec4899'},
-  {id:'kids',label:'Kids / Activities',color:'#f472b6'},
+  {id:'home',label:'Home',color:'#ec4899'},
+  {id:'groceries',label:'Food — Groceries',color:'#1d9e75'},
+  {id:'fastfood',label:'Food — Fast Food',color:'#f97316'},
+  {id:'restaurant',label:'Food — Restaurant',color:'#fb923c'},
+  {id:'food_work',label:'Food — Food at Work',color:'#c47b2b'},
+  {id:'auto',label:'Auto & Insurance',color:'#60a5fa'},
+  {id:'ram',label:'Ram Restoration',color:'#7c3aed'},
+  {id:'kids',label:'Kids',color:'#f472b6'},
+  {id:'tj_soccer',label:'TJ Soccer',color:'#38bdf8'},
   {id:'shopping',label:'Shopping',color:'#fbbf24'},
+  {id:'utilities',label:'Utilities',color:'#a78bfa'},
+  {id:'debt',label:'Debt Payments',color:'#ef4444'},
+  {id:'entertainment',label:'Entertainment',color:'#22d3ee'},
+  {id:'personal',label:'Personal Care',color:'#e879f9'},
   {id:'subscriptions',label:'Subscriptions',color:'#34d399'},
-  {id:'healthcare',label:'Healthcare',color:'#f87171'},
+  {id:'pets',label:'Pets',color:'#fb7185'},
+  {id:'business',label:'Business',color:'#10b981'},
+  {id:'taxes',label:'Taxes',color:'#64748b'},
+  {id:'cash',label:'Cash',color:'#84cc16'},
+  {id:'fees',label:'Fees',color:'#dc2626'},
   {id:'transfers',label:'Transfers',color:'#94a3b8'},
-  {id:'income',label:'Income',color:'#22d3ee'},
-  {id:'auto',label:'Auto',color:'#60a5fa'},
-  {id:'home',label:'Home / Maintenance',color:'#a3e635'},
-  {id:'personal',label:'Personal care',color:'#e879f9'},
-  {id:'pet',label:'Pet',color:'#fb7185'},
+  {id:'income',label:'Income',color:'#06b6d4'},
   {id:'other',label:'Other',color:'#6b7280'},
 ];
 const DEFAULT_IDS=CATS.map(c=>c.id);
@@ -691,7 +696,7 @@ let currentWorkspaceId=null;
 function wsAttach(obj){return workspacesEnabled?{...obj,workspace_id:currentWorkspaceId}:obj;}
 function wsAttachAll(arr){return workspacesEnabled?arr.map(o=>({...o,workspace_id:currentWorkspaceId})):arr;}
 function wsFilter(q){return workspacesEnabled?q.eq('workspace_id',currentWorkspaceId):q;}
-const NWS_DEFAULT={groceries:'needs',gas:'needs',utilities:'needs',housing:'needs',healthcare:'needs',auto:'needs',home:'needs',pet:'needs',transfers:'savings',dining:'wants',fastfood:'wants',coffee:'wants',shopping:'wants',subscriptions:'wants',kids:'wants',personal:'wants',other:'wants'};
+const NWS_DEFAULT={home:'needs',groceries:'needs',food_work:'needs',auto:'needs',utilities:'needs',personal:'needs',pets:'needs',taxes:'needs',fees:'needs',transfers:'savings',debt:'savings',fastfood:'wants',restaurant:'wants',shopping:'wants',subscriptions:'wants',kids:'wants',tj_soccer:'wants',entertainment:'wants',ram:'wants',business:'wants',cash:'wants',other:'wants'};
 function nwsClass(catId){return nwsOverrides[catId]||NWS_DEFAULT[catId]||'wants';}
 let merchantRules={},askLater=new Set();
 
@@ -1683,28 +1688,39 @@ function exportRules(){
 }
 
 const KW_RULES=[
-  {kw:['kroger fuel','sheetz','marathon','speedway','sunoco','kwik fill','circle k','bp ','shell ','exxon','mobil','chevron','pilot travel','loves travel','casey','getgo','united dairy f','udf','flying j','bjs fuel','certified oil'],cat:'gas'},
-  {kw:['kroger','meijer','aldi','whole foods','trader joe','giant eagle','asian international','royo bread','wal-mart','walmart','fresh thyme','sprouts','carfagna','food lion','bjs wholesale','costco whse','wm superc','supreme fresh'],cat:'groceries'},
-  {kw:['mcdonald','wendy','taco bell','panda express','chipotle','panera','pizza hut','donatos','jets pizza','burger king','arby','chick-fil','popeye','sonic drive','five guys','culver','jersey mikes','jimmy johns','kfc ','raising cane','huey magoo','condado tacos','dairy queen','daves hot chicken','tropical smoothie','skyline chili','bibibop','graeters','mi sombrero','famous famiglia','coldstone','cinnabon','orange leaf','whits frozen','doc popcorn','doordash','dd doordash','dd citybarbe','dd pandaexpr'],cat:'fastfood'},
-  {kw:['bob evans','scrambler','roosters','applebees','rusty bucket','buffalo wild','texas roadhouse','chicken salad chick','el vaquero','firebirds','la matraca','senor antonio','taquero','brown derby','harry buffalo','beer barrel','pies pints','pastimes pub','sand bar','standardized brew','nostalgia brew','district 13','katzinger','koble greek','las margaritas','hyderabad house','panchos tacos','galena brewing','indigo atlanta','polaris north','polaris salad','polaris s dyn','amk jpmc','jpmc polaris','365 market','levy@','levy restaurants','levy1psc','uep chuan','farmer fridge','clear fork dairy','creme corner','whistle keg','birdie books','scioto valley coff','meehans','buckeye pho','harbor house','surve','tst '],cat:'dining'},
-  {kw:['starbucks','coffee','dunkin','crimson cup','dutch bros','biggby','tim horton','travelin tom','gathering grounds'],cat:'coffee'},
-  {kw:['columbia gas','spectrum spectrum','local waste','goodleap','at&t','verizon','t-mobile','duke energy','aep ','firstenergy','dominion energy','ring basic','nexgreen','wwp'],cat:'utilities'},
-  {kw:['crosscountry mortgage','mortgage'],cat:'housing'},
-  {kw:['jpmorgan chase b payroll','payroll dd','direct deposit'],cat:'income'},
-  {kw:['wells fargo auto draft','chrysler capital','progressive','prog direct','napa store','napa auto','autozone','advance auto','jiffy lube','valvoline','firestone','goodyear','midas','boyds tir','pond tire','roush honda','delaware cjdr','car wash','sun classics car'],cat:'auto'},
-  {kw:['netflix','hulu','spotify','kindle','prime video','disney plus','disneyplus','apple.com/bill','microsoft','filter subscription','getepic','dualtone','paramount','peacock','hbo','youtube premium','audible','nintendo','playstation','xbox game','pc game pass','steamgames','boxcast','frontier a8'],cat:'subscriptions'},
-  {kw:['aspca','petsmart','petco','chewy','lllreptile','pet supplies','banfield','annehurst veterinary','sunbury veterinary','big walnut animal','tractor supply','muttsandco'],cat:'pet'},
-  {kw:['home depot','homedepot','lowes','ace hardware','mnrd','amer home shield','scherzinger pest','sunbury ace','menards','grace cleaners','westerville cleaners'],cat:'home'},
-  {kw:['lume','billie','manucurist','sash bag','juggy','shay hamper','ulta','sephora','great clips','sport clips','regis','hair','nail','salon','spa','barber','gloss luxe','gloss kayleigh','luxe beauty','kenneth','cosmetics co'],cat:'personal'},
-  {kw:['internet tfr','internal transfer','capital one mobile','capital one pmt','discover card','citi card','synchrony','barclays','jpm chase 401k','dept education','comenity','overdraft fee','non-huntington atm','international transaction fee','huntington bp merch','pp federal credit'],cat:'transfers'},
-  {kw:['minuteclinic','copc','achieve psychology','caitlyn brown','medione','urgent care','ohio health','mount carmel','nationwide children','optometrist','vision works','lenscrafters','anthony dental','vision professiona','associates in central','loy ohiohealth','dncss nationwide','discount drug','tommy nobis','well within'],cat:'healthcare'},
-  {kw:['big walnut soccer','gotsoccer','club ohio soccer','americheer','resolute athletic','payschl','music&arts','music arts','steppin high','allstar cheer','cheer athletic','ymca','planet fitness','anytime fitness','snap fitness','la fitness','us all star fed','primo cheer','primoticketing','ohsaa','bishop watterson','bw athletic','lakewood athletic','cougar corner','pickerington band','sc big walnut','pep rally apparel','rebel athletic','rebel athleti','spooky nook','rockin jump','ctlp rockin','arnold sports','kalahari','hobart arena','medieval times','soccer plus','soccer village','penn beech','inspired driving','gdex'],cat:'kids'},
-  {kw:['wdw ','disney on ice','columbus zoo','ssa columbus','ssa zoombezi','zoombezi','amc online','cinemark','uec premier','tm lumineers','tm outlaw','tm wallflowers','spirit airlines','avis ','theparkingspot','cmh parking','laz parking','gccc goodale','columbus commons park','play it games','dragon lair','go calendars','boardwalk paradise','ron jon','skywheel','surf sun','landshark','mexico pavilion','trex orlando','crystal arts','tez natl','hilton hotels','holiday inn','kalahari resorts','sq amusement','sq adventure','sq concessions','sq columbus','sq fairgrounds','wright concessions','vendor 13','special event china','sq merchandise','fandango'],cat:'other'},
-  {kw:['pmt ohio','pmt oplates','pmt bureau motor','2cool traffic','2levy'],cat:'other'},
-  {kw:['dollar tree','dollar tr','dollar general','five belo','goodwill','village discount','tjmaxx','t j maxx','marshalls','ross ','burlington','old navy','gap ','kohls','jcpenney','macys','nordstrom','express ','hollister','carter','bath and body','joann','michaels stores','ikea','best buy','gamestop','barnes','famous footwea','dsw','dicks sporting','dickssportinggoods','lenovo','br factory','altar state','bargain beachwear','tanger outlets','ye olde pro','elaracraft','creativejamco','oracle ring','the comfy','navage nasal','raiven','peach truck','wittichs candy','disneystore','adidas','asics','puma','crocs','american eagle','target','amazon','amzn','ebay','etsy','wayfair','costco','five below','bath body','sq outlet','sq lemonade','sq money','sq grown','sq tater','sq dippin','sq fingers','sq frozen'],cat:'shopping'},
+  {kw:['365 market','amk jpmc','jpmc polaris'],cat:'food_work'},
+  {kw:['kroger','meijer','aldi','whole foods','trader joe','giant eagle','asian international','royo bread','wal-mart','walmart','fresh thyme','sprouts','carfagna','food lion','bjs wholesale','costco whse','wm superc','supreme fresh','gfs store','jungle jims'],cat:'groceries'},
+  {kw:['mcdonald','wendy','taco bell','burger royale','starbucks','donatos','smoothie','domino','panda express','chipotle','raising cane','kfc ','arby','pizza hut','dairy queen','jersey mikes','wingstop','skyline chili','subway','dunkin','panera','jimmy johns','baskin robbins','united dairy farmers','turkey hill','auntie anne','jets pizza','burger king','chick-fil','popeye','sonic drive','five guys','culver','huey magoo','condado tacos','daves hot chicken','tropical smoothie','bibibop','graeters','famous famiglia','coldstone','cinnabon','orange leaf','whits frozen','doc popcorn','doordash','dd doordash','dd citybarbe','dd pandaexpr','crimson cup','dutch bros','biggby','tim horton','travelin tom','gathering grounds'],cat:'fastfood'},
+  {kw:['mi sombrero','buffalo wild','olive garden','chilis','condado tacos','harry buffalo','fuego fiesta','pho district','tst ','bob evans','scrambler','roosters','applebees','rusty bucket','texas roadhouse','chicken salad chick','el vaquero','firebirds','la matraca','senor antonio','taquero','brown derby','beer barrel','pies pints','pastimes pub','sand bar','standardized brew','nostalgia brew','district 13','katzinger','koble greek','las margaritas','hyderabad house','panchos tacos','galena brewing','indigo atlanta','polaris north','polaris salad','polaris s dyn','levy@','levy restaurants','levy1psc','uep chuan','farmer fridge','clear fork dairy','creme corner','whistle keg','birdie books','scioto valley coff','meehans','buckeye pho','harbor house','surve'],cat:'restaurant'},
+  {kw:['crosscountry mortgage','mortgage','home depot','homedepot','lowes','ace hardware','amer home shield','scherzinger pest','sunbury ace','zoomin gro','nexgreen','grace cleaners','westerville cleaners'],cat:'home'},
+  {kw:['advance auto','autozone','napa store','napa auto','starr trucking'],cat:'ram'},
+  {kw:['wells fargo auto draft','honda financial','american honda','chrysler capital','progressive','prog direct','nationwide','roush honda','performance cjdr','delaware cjdr','jiffy lube','valvoline','firestone','goodyear','midas','boyds tir','pond tire','car wash','sun classics car','kroger fuel','sheetz','marathon','speedway','sunoco','kwik fill','circle k','bp ','shell ','exxon','mobil','chevron','pilot travel','loves travel','casey','getgo','united dairy f','udf','flying j','bjs fuel','certified oil'],cat:'auto'},
+  {kw:['columbia gas','spectrum spectrum','local waste','at&t','verizon wireless','verizon','t-mobile','duke energy','aep ','firstenergy','dominion energy','ring basic','del co water','sunbury oh utility','wwp'],cat:'utilities'},
+  {kw:['goodleap','dept education','dept educ','capital one mobile','capital one pmt','discover card','citi card','synchrony','barclays','comenity','paypal credit','affirm'],cat:'debt'},
+  {kw:['jpmorgan chase b payroll','jpmorgan chase b pay','chase b payroll','payroll dd','bpayroll','direct deposit'],cat:'income'},
+  {kw:['internet tfr','internal transfer','mobile check deposit','jpm chase 401k','overdraft fee','non-huntington atm','international transaction fee','huntington bp merch','pp federal credit'],cat:'transfers'},
+  {kw:['netflix','hulu','spotify','kindle','audible','prime video','disney plus','disneyplus','apple.com/bill','microsoft','filter subscription','getepic','dualtone','paramount','peacock','hbo','youtube premium','nintendo','playstation','xbox game','pc game pass','steamgames','boxcast','frontier a8','wyze','anthropic','planet fitness','anytime fitness','snap fitness','la fitness'],cat:'subscriptions'},
+  {kw:['aspca','petsmart','petco','chewy','lllreptile','pet supplies','banfield','annehurst veterinary','sunbury veterinary','big walnut animal','tractor supply','muttsandco'],cat:'pets'},
+  {kw:['cvs','discount drug','hr imaging','minuteclinic','copc','achieve psychology','caitlyn brown','medione','urgent care','ohio health','mount carmel','nationwide children','optometrist','vision works','lenscrafters','anthony dental','vision professiona','associates in central','loy ohiohealth','dncss nationwide','tommy nobis','well within','wild blooms wellness','lume','billie','manucurist','sash bag','juggy','shay hamper','ulta','sephora','great clips','sport clips','regis','salon','spa','barber','gloss luxe','gloss kayleigh','luxe beauty','kenneth','cosmetics co'],cat:'personal'},
+  {kw:['mwx cheer','resolute athletic','fly cheer gear','americheer','cheerexpo','ohsaa','primoticketing','primo cheer','ymca','big walnut soccer','gotsoccer','club ohio soccer','payschl','music&arts','music arts','steppin high','allstar cheer','cheer athletic','us all star fed','bishop watterson','bw athletic','lakewood athletic','cougar corner','pickerington band','sc big walnut','pep rally apparel','rebel athletic','rebel athleti','spooky nook','rockin jump','ctlp rockin','soccer plus','soccer village','penn beech','inspired driving','gdex'],cat:'kids'},
+  {kw:['venmo *laura yost','venmo *jillian woltz','venmo *keegan'],cat:'tj_soccer'},
+  {kw:['wdw ','disney on ice','columbus zoo','ssa columbus','ssa zoombezi','zoombezi','amc online','cinemark','uec premier','tm lumineers','tm outlaw','tm wallflowers','spirit airlines','avis ','theparkingspot','cmh parking','laz parking','gccc goodale','columbus commons park','play it games','dragon lair','go calendars','boardwalk paradise','ron jon','skywheel','surf sun','landshark','mexico pavilion','trex orlando','crystal arts','tez natl','hilton hotels','holiday inn','kalahari resorts','kalahari','hobart arena','medieval times','arnold sports','sq amusement','sq adventure','sq concessions','sq columbus','sq fairgrounds','wright concessions','vendor 13','special event china','sq merchandise','fandango'],cat:'entertainment'},
+  {kw:['dollar tree','dollar tr','dollar general','five belo','goodwill','village discount','tjmaxx','t j maxx','marshalls','ross ','burlington','old navy','gap ','kohls','jcpenney','macys','nordstrom','express ','hollister','carter','bath and body','joann','michaels stores','ikea','best buy','gamestop','barnes','famous footwea','dsw','dicks sporting','dickssportinggoods','lenovo','br factory','altar state','bargain beachwear','tanger outlets','ye olde pro','elaracraft','creativejamco','oracle ring','the comfy','navage nasal','raiven','peach truck','wittichs candy','disneystore','adidas','asics','puma','crocs','american eagle','target','amazon','amzn','ebay','wayfair','costco','five below','bath body','sq outlet','sq lemonade','sq money','sq grown','sq tater','sq dippin','sq fingers','sq frozen','mnrd','menards'],cat:'shopping'},
+  {kw:['etsy.com','etsy','cricut','siser'],cat:'business'},
+  {kw:['r.i.t.a','rita ifile','oh bureau','ohio oplates','pmt ohio','pmt oplates','pmt bureau motor','2levy'],cat:'taxes'},
+  {kw:['huntington atm'],cat:'cash'},
+  {kw:['overdraft','2cool traffic'],cat:'fees'},
 ];
 
-const ALWAYS_REVIEW=['venmo','paypal ','cashapp','afterpay','klarna','affirm','zelle'];
+const BANK_CAT_PASSTHROUGH={
+  'groceries':'groceries','fast food':'fastfood','restaurants':'restaurant','food at work':'food_work',
+  'mortgage & rent':'home','mortgage':'home','auto payment':'auto','auto parts & service':'auto',
+  'auto insurance':'auto','gasoline':'auto','gas':'auto','electric':'utilities','phone':'utilities',
+  'cable & internet':'utilities','water':'utilities','sewer':'utilities','student loan payment':'debt',
+  'credit card payment':'debt','fitness':'subscriptions','vet':'pets','veterinarian':'pets',
+};
+
+const ALWAYS_REVIEW=['venmo','paypal ','cashapp','afterpay','klarna','zelle'];
 const MEANINGFUL_SUFFIXES=['fuel','pharmacy','clinic','online','express','market','fresh','plus','pro','premium','prime','video','music','dental','optical','pet','auto','gas','deli','cafe','bistro','grill','bar','drive','mobile','wireless'];
 
 function getMK(desc){
@@ -1736,10 +1752,17 @@ function getCanon(desc){
 
 function isAlwaysReview(desc){const dl=desc.toLowerCase();return ALWAYS_REVIEW.some(k=>dl.includes(k));}
 
-function autoAssign(desc){
+function autoAssign(desc,bankCat){
   const dl=desc.toLowerCase(),mk=getMK(desc);
   if(merchantRules[mk])return{cat:merchantRules[mk],confident:true};
   if(isAlwaysReview(desc))return{cat:'other',confident:false,needsReview:true};
+  if(bankCat){
+    const bc=bankCat.toLowerCase().trim();
+    if(bc.includes('transfer'))return{cat:'transfers',confident:true};
+    if(bc.includes('paycheck'))return{cat:'income',confident:true};
+    const passthrough=BANK_CAT_PASSTHROUGH[bc];
+    if(passthrough)return{cat:passthrough,confident:true};
+  }
   for(const r of KW_RULES){
     if(r.kw.some(k=>dl.includes(k)))return{cat:r.cat,confident:true};
   }
@@ -1794,15 +1817,16 @@ function parseCsv(text){
   const txns=[];
   for(let i=1;i<lines.length;i++){
     const cols=parseCSVLine(lines[i]);
-    let dateStr='',desc='',amt=0;
+    let dateStr='',desc='',amt=0,bankCat='';
     if(format==='desktop'){
-      // Huntington desktop: Date, Reference, Payee Name, Memo, Amount
+      // Huntington desktop: Date, Reference, Payee Name, Memo, Amount[, Category Name, Transaction Number] (Payoff Debt account adds the last two)
       if(cols.length<5)continue;
       dateStr=normalizeDate(cols[0]);
       desc=cols[2].trim();
       const memo=cols[3].trim();
       if(desc.toLowerCase().includes('zelle')&&memo)desc=memo.replace(/^Zelle Transaction\s+\d+\s*/i,'').trim()||desc;
       amt=parseFloat(cols[4].replace(/[$,]/g,''));
+      if(cols.length>=6)bankCat=cols[5].trim();
     }else if(format==='chase'){
       // Chase: Transaction Date, Post Date, Description, Category, Type, Amount, Memo
       if(cols.length<6)continue;
@@ -1844,14 +1868,15 @@ function parseCsv(text){
       desc=cols[1].trim();
       amt=-Math.abs(parseFloat(cols[2].replace(/[$,]/g,'')));
     }else{
-      // Huntington app: Date, Description, Category, Amount
+      // Huntington app / Joint & Bill Pay: Date, Description, Category, Amount[, Split, Tags]
       if(cols.length<4)continue;
       dateStr=normalizeDate(cols[0]);
       desc=cols[1].trim();
+      bankCat=cols[2].trim();
       amt=parseFloat(cols[3].replace(/[$,]/g,''));
     }
     if(!dateStr||!desc||isNaN(amt))continue;
-    const{cat,confident,needsReview,txnReview}=autoAssign(desc);
+    const{cat,confident,needsReview,txnReview}=autoAssign(desc,bankCat);
     txns.push({date:dateStr,desc,amount:amt,cat,note:'',needsReview:!!needsReview,txnReview:!!txnReview,confident:!!confident,format});
   }
   return txns;
