@@ -240,10 +240,17 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     </div>
     <div class="auth-field">
       <label>Password</label>
-      <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
+      <div style="position:relative">
+        <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()" style="width:100%">
+        <span onclick="togglePw('authPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--accent,#6c8cff);cursor:pointer;user-select:none">Show</span>
+      </div>
     </div>
     <div id="authError" class="auth-error"></div>
     <button class="auth-btn" onclick="signIn()" id="signInBtn">Sign in</button>
+    <div style="text-align:center;margin-top:14px">
+      <span onclick="forgotPassword()" style="font-size:12px;color:var(--accent,#6c8cff);cursor:pointer">Forgot password?</span>
+    </div>
+    <div id="authNotice" style="display:none;margin-top:12px;font-size:12px;text-align:center;color:var(--text2)"></div>
   </div>
 </div>
 
@@ -253,7 +260,10 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     <p class="auth-sub">Welcome! Choose a password to finish setting up your account.</p>
     <div class="auth-field">
       <label>New password</label>
-      <input type="password" id="newPassword" placeholder="At least 6 characters" autocomplete="new-password">
+      <div style="position:relative">
+        <input type="password" id="newPassword" placeholder="At least 6 characters" autocomplete="new-password" style="width:100%">
+        <span onclick="togglePw('newPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--accent,#6c8cff);cursor:pointer;user-select:none">Show</span>
+      </div>
     </div>
     <div class="auth-field">
       <label>Confirm password</label>
@@ -1733,6 +1743,27 @@ async function resetBudgetFields(){
   await saveBudgetTargets();
   renderBudgetScreen();
   renderDashboard();
+}
+
+function togglePw(id,el){
+  const inp=document.getElementById(id);
+  if(!inp)return;
+  const show=inp.type==='password';
+  inp.type=show?'text':'password';
+  if(el)el.textContent=show?'Hide':'Show';
+}
+
+async function forgotPassword(){
+  const email=document.getElementById('authEmail').value.trim();
+  const notice=document.getElementById('authNotice');
+  const errEl=document.getElementById('authError');
+  errEl.style.display='none';notice.style.display='none';
+  if(!email){errEl.textContent='Enter your email above first, then tap “Forgot password?”.';errEl.style.display='block';return;}
+  const redirectTo=window.location.origin+window.location.pathname;
+  const{error}=await db.auth.resetPasswordForEmail(email,{redirectTo});
+  if(error){errEl.textContent=error.message;errEl.style.display='block';return;}
+  notice.textContent='If an account exists for '+email+', a password-reset link is on its way. Check your email (and spam), then follow the link back here to set a new password.';
+  notice.style.display='block';
 }
 
 async function signIn(){
