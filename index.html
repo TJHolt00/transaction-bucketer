@@ -633,7 +633,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
       <div class="section-label" style="margin-bottom:0">Merchant rules</div>
       <input type="text" id="rulesSearch" placeholder="Search rules…" oninput="renderRules()" style="flex:1;max-width:240px;padding:6px 10px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text)">
-      <button class="btn-danger" id="clearRulesBtn" onclick="clearAllRules()" style="white-space:nowrap">Clear learned rules</button>
+      <button class="btn-danger" id="clearRulesBtn" onclick="clearAllRules()" style="white-space:nowrap">Clear all rules</button>
     </div>
     <div id="rulesList"></div>
   </div>
@@ -684,6 +684,7 @@ const APP_SETTING_NETWORTH='net_worth';
 const APP_SETTING_GOALS='savings_goals';
 const APP_SETTING_BILLS='recurring_bills';
 const APP_SETTING_EXTRAS='extras';
+const APP_SETTING_KEYWORD_RULES='keyword_rules';
 let budgetTargets={};
 let debtState={debts:[],strategy:'avalanche',extra:0};
 let nwsOverrides={};
@@ -703,6 +704,8 @@ function wsFilter(q){return workspacesEnabled?q.eq('workspace_id',currentWorkspa
 const NWS_DEFAULT={home:'needs',groceries:'needs',food_work:'needs',auto:'needs',utilities:'needs',personal:'needs',pets:'needs',taxes:'needs',fees:'needs',transfers:'savings',debt:'savings',fastfood:'wants',restaurant:'wants',shopping:'wants',subscriptions:'wants',kids:'wants',tj_soccer:'wants',entertainment:'wants',ram:'wants',business:'wants',cash:'wants',other:'wants'};
 function nwsClass(catId){return nwsOverrides[catId]||NWS_DEFAULT[catId]||'wants';}
 let merchantRules={},askLater=new Set();
+// Per-workspace keyword rules (ordered array of {kw,cat}). Empty for a fresh workspace — nothing is forced globally.
+let keywordRules=[];
 
 function txnToRow(t){
   return{id:t.id,date:t.date,description:t.desc,amount:t.amount,cat:t.cat||'other',note:t.note||'',needs_review:!!t.needsReview,txn_review:!!t.txnReview,confident:!!t.confident,format:t.format||'app'};
@@ -721,7 +724,7 @@ async function loadAllData(){
   const [txnRes, ruleRes, settingRes] = await Promise.all([
     wsFilter(db.from('transactions').select('*').order('inserted_at').range(0, 20000)),
     wsFilter(db.from('merchant_rules').select('*').range(0, 20000)),
-    wsFilter(db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH,APP_SETTING_GOALS,APP_SETTING_BILLS,APP_SETTING_EXTRAS]))
+    wsFilter(db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH,APP_SETTING_GOALS,APP_SETTING_BILLS,APP_SETTING_EXTRAS,APP_SETTING_KEYWORD_RULES]))
   ]);
   if(txnRes.error)console.error('load txns',txnRes.error);
   if(ruleRes.error)console.error('load rules',ruleRes.error);
@@ -729,6 +732,7 @@ async function loadAllData(){
   // Reset all per-workspace state so switching workspaces does not bleed state
   allTxns=(txnRes.data||[]).map(rowToTxn);
   merchantRules={};askLater=new Set();
+  keywordRules=[];
   debtState={debts:[],strategy:'avalanche',extra:0};
   nwsOverrides={};
   netWorthState={assets:[],liabilities:[],snapshots:[]};
@@ -764,6 +768,10 @@ async function loadAllData(){
     }
     if(s.key===APP_SETTING_EXTRAS && s.value && typeof s.value==='object'){
       extrasState={forecast:{...extrasState.forecast,...(s.value.forecast||{})},challenge:{...extrasState.challenge,...(s.value.challenge||{})}};
+    }
+    if(s.key===APP_SETTING_KEYWORD_RULES && Array.isArray(s.value)){
+      // This workspace's own keyword rules (ordered). A fresh workspace has none.
+      keywordRules=s.value.filter(r=>r&&r.kw&&r.cat).map(r=>({kw:String(r.kw),cat:String(r.cat)}));
     }
   });
   ensureBudgetStructure();
@@ -1742,7 +1750,12 @@ function exportRules(){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='bucketer_rules.json';a.click();
 }
 
+// SEED ONLY — Robyn's original keyword ruleset. This is NOT applied at runtime anymore.
+// It was used once to populate the Household workspace's own keyword_rules setting.
+// Runtime keyword matching reads the per-workspace `keywordRules` (loaded from app_settings),
+// so a fresh workspace inherits nothing. Kept here as the source for that one-time seed.
 const KW_RULES=[
+  {kw:['kroger fuel'],cat:'auto'},
   {kw:['365 market','amk jpmc','jpmc polaris'],cat:'food_work'},
   {kw:['kroger','meijer','aldi','whole foods','trader joe','giant eagle','asian international','royo bread','wal-mart','walmart','fresh thyme','sprouts','carfagna','food lion','bjs wholesale','costco whse','wm superc','supreme fresh','gfs store','jungle jims'],cat:'groceries'},
   {kw:['mcdonald','wendy','taco bell','burger royale','starbucks','donatos','smoothie','domino','panda express','chipotle','raising cane','kfc ','arby','pizza hut','dairy queen','jersey mikes','wingstop','skyline chili','subway','dunkin','panera','jimmy johns','baskin robbins','united dairy farmers','turkey hill','auntie anne','jets pizza','burger king','chick-fil','popeye','sonic drive','five guys','culver','huey magoo','condado tacos','daves hot chicken','tropical smoothie','bibibop','graeters','famous famiglia','coldstone','cinnabon','orange leaf','whits frozen','doc popcorn','doordash','dd doordash','dd citybarbe','dd pandaexpr','crimson cup','dutch bros','biggby','tim horton','travelin tom','gathering grounds'],cat:'fastfood'},
@@ -1818,8 +1831,9 @@ function autoAssign(desc,bankCat){
     const passthrough=BANK_CAT_PASSTHROUGH[bc];
     if(passthrough)return{cat:passthrough,confident:true};
   }
-  for(const r of KW_RULES){
-    if(r.kw.some(k=>dl.includes(k)))return{cat:r.cat,confident:true};
+  // This workspace's own keyword rules (ordered). A fresh workspace has none — nothing is forced.
+  for(const r of keywordRules){
+    if(dl.includes(r.kw))return{cat:r.cat,confident:true};
   }
   if(askLater.has(mk))return{cat:'other',confident:false,needsReview:true,txnReview:true};
   return{cat:'other',confident:false,needsReview:true};
@@ -2386,20 +2400,33 @@ function renderRules(){
       <button class="btn-danger" onclick="deleteRule('${mk.replace(/'/g,"\\'")}')">Remove</button>
     </div>`).join(''):`<div class="empty">${q?'No learned rules match your search.':'No learned rules yet — they build up as you categorize merchants during import review.'}</div>`;
 
-  // Built-in rules (from the app, apply to all workspaces) — Robyn's keyword ruleset. Read-only.
-  let builtin=builtinRuleList();
-  if(q)builtin=builtin.filter(r=>r.kw.toLowerCase().includes(q)||(catMap[r.cat]?.label||r.cat).toLowerCase().includes(q));
-  const builtinHtml=builtin.length?builtin.map(r=>`
-    <div class="rule-row" style="opacity:.85">
-      <span class="rule-merchant">${r.kw}</span>
+  // Keyword rules — this workspace's own ordered keyword list. Removable. A fresh workspace has none.
+  let kw=keywordRules.map((r,i)=>({...r,i}));
+  if(q)kw=kw.filter(r=>r.kw.toLowerCase().includes(q)||(catMap[r.cat]?.label||r.cat).toLowerCase().includes(q));
+  const kwHtml=kw.length?kw.map(r=>`
+    <div class="rule-row">
+      <span class="rule-merchant">${r.kw.replace(/</g,'&lt;')}</span>
       <span class="rule-arrow">→</span>${catLabel(r.cat)}
-    </div>`).join(''):`<div class="empty">${q?'No built-in rules match your search.':'None.'}</div>`;
+      <button class="btn-danger" onclick="deleteKeywordRule(${r.i})">Remove</button>
+    </div>`).join(''):`<div class="empty">${q?'No keyword rules match your search.':'No keyword rules in this workspace. Categorization runs off the bank category column and rules you build.'}</div>`;
 
   document.getElementById('rulesList').innerHTML=`
-    <div class="section-label" style="margin:4px 0 8px;font-size:11px">Learned rules — this workspace, removable (${learned.length})</div>
+    <div class="section-label" style="margin:4px 0 8px;font-size:11px">Learned rules — exact merchant matches, removable (${learned.length})</div>
     ${learnedHtml}
-    <div class="section-label" style="margin:24px 0 8px;font-size:11px">Built-in rules — apply to every workspace (${builtin.length})</div>
-    ${builtinHtml}`;
+    <div class="section-label" style="margin:24px 0 8px;font-size:11px">Keyword rules — this workspace, removable (${keywordRules.length})</div>
+    ${kwHtml}`;
+}
+
+async function saveKeywordRules(){
+  const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_KEYWORD_RULES,value:keywordRules,updated_at:new Date().toISOString()}));
+  if(error){console.error('saveKeywordRules',error);alert('Could not save keyword rules: '+error.message);}
+}
+
+async function deleteKeywordRule(i){
+  if(i<0||i>=keywordRules.length)return;
+  keywordRules.splice(i,1);
+  await saveKeywordRules();
+  renderRules();
 }
 
 async function deleteRule(mk){
@@ -2409,12 +2436,15 @@ async function deleteRule(mk){
 }
 
 async function clearAllRules(){
-  const n=Object.keys(merchantRules).length;
-  if(n===0){alert('There are no learned rules to clear. (Built-in rules stay in the app and cannot be cleared here.)');return;}
-  if(!confirm(`Clear all ${n} learned merchant rules for this workspace?\n\nBuilt-in rules are unaffected. This cannot be undone.`))return;
-  const{error}=await wsFilter(db.from('merchant_rules').delete()).neq('bucket','');
-  if(error){alert('Failed to clear rules: '+error.message);return;}
-  merchantRules={};askLater=new Set();
+  const nLearned=Object.keys(merchantRules).length, nKw=keywordRules.length;
+  if(nLearned===0&&nKw===0){alert('There are no rules to clear in this workspace.');return;}
+  if(!confirm(`Clear ALL rules for this workspace?\n\n• ${nLearned} learned rules\n• ${nKw} keyword rules\n\nThis cannot be undone.`))return;
+  if(nLearned>0){
+    const{error}=await wsFilter(db.from('merchant_rules').delete()).neq('bucket','');
+    if(error){alert('Failed to clear learned rules: '+error.message);return;}
+    merchantRules={};askLater=new Set();
+  }
+  if(nKw>0){keywordRules=[];await saveKeywordRules();}
   document.getElementById('rulesBadge').textContent=0;
   renderRules();
 }
