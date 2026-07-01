@@ -630,7 +630,11 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
   <div class="screen" id="screen-rules">
     <div class="section-label" style="margin-bottom:12px">Custom categories</div>
     <div id="customCatsList" style="margin-bottom:24px"></div>
-    <div class="section-label" style="margin-bottom:12px">Saved merchant rules — applied automatically on every import</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+      <div class="section-label" style="margin-bottom:0">Merchant rules</div>
+      <input type="text" id="rulesSearch" placeholder="Search rules…" oninput="renderRules()" style="flex:1;max-width:240px;padding:6px 10px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text)">
+      <button class="btn-danger" id="clearRulesBtn" onclick="clearAllRules()" style="white-space:nowrap">Clear learned rules</button>
+    </div>
     <div id="rulesList"></div>
   </div>
 
@@ -811,8 +815,8 @@ async function createWorkspaceInline(){
     // Only offer workspaces other than the one being created; we know current has rules if merchantRules has entries
     return w.id===currentWorkspaceId&&Object.keys(merchantRules).length>0;
   });
-  // Show custom modal, wait for user choice
-  const sourceId=await promptCopyRulesModal(name, workspaces);
+  // Show custom modal, wait for user's picked rules (array of {keyword,bucket}) or null.
+  const chosenRules=await promptCopyRulesModal(name, workspaces);
   // Create the workspace
   const{data,error}=await db.from('workspaces').insert({name}).select().single();
   if(error){alert('Could not create workspace: '+error.message);return;}
@@ -821,14 +825,11 @@ async function createWorkspaceInline(){
   localStorage.setItem(LS_WORKSPACE,currentWorkspaceId);
   input.value='';
   const nr=document.getElementById('newWorkspaceRow');if(nr)nr.style.display='none';
-  // Copy rules from chosen workspace if user picked one
-  if(sourceId){
-    const{data:srcRules}=await db.from('merchant_rules').select('keyword,bucket').eq('workspace_id',sourceId);
-    if(srcRules&&srcRules.length){
-      const rules=srcRules.map(r=>({keyword:r.keyword,bucket:r.bucket,workspace_id:data.id}));
-      const{error:rErr}=await db.from('merchant_rules').insert(rules);
-      if(rErr)console.error('copy rules error',rErr);
-    }
+  // Copy the specific rules the user selected in the picker.
+  if(chosenRules&&chosenRules.length){
+    const rules=chosenRules.map(r=>({keyword:r.keyword,bucket:r.bucket,workspace_id:data.id}));
+    const{error:rErr}=await db.from('merchant_rules').insert(rules);
+    if(rErr)console.error('copy rules error',rErr);
   }
   renderWorkspaceSwitcher();
   await initApp();
@@ -839,39 +840,93 @@ function promptCopyRulesModal(newName, allWorkspaces){
     const overlay=document.createElement('div');
     overlay.className='modal-overlay';
     overlay.id='copyRulesModalOverlay';
-    const wsOpts=allWorkspaces.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+    const wsOpts=allWorkspaces.map(w=>`<option value="${w.id}">${w.name.replace(/</g,'&lt;')}</option>`).join('');
     overlay.innerHTML=`
-      <div class="modal-box" style="max-width:400px">
-        <div class="modal-title" style="font-size:15px">Set up "${newName}"</div>
-        <p style="font-size:13px;color:var(--text2);margin-bottom:20px">Would you like to copy merchant rules from one of your existing workspaces into this new one?</p>
+      <div class="modal-box" style="max-width:460px">
+        <div class="modal-title" style="font-size:15px">Set up "${newName.replace(/</g,'&lt;')}"</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">New workspaces start with no learned rules. You can copy some in from an existing workspace, or start fresh.</p>
         <div id="copyRulesYesSection" style="display:none">
-          <div class="modal-field">
+          <div class="modal-field" style="margin-bottom:10px">
             <label>Copy rules from</label>
-            <select id="copyRulesSource">${wsOpts}</select>
+            <div style="display:flex;gap:8px">
+              <select id="copyRulesSource" style="flex:1">${wsOpts}</select>
+              <button class="btn btn-secondary" id="copyRulesLoadBtn" style="white-space:nowrap;padding:7px 12px">Load rules</button>
+            </div>
+          </div>
+          <div id="copyRulesPicker" style="display:none">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+              <input type="text" id="copyRulesSearch" placeholder="Search rules…" style="flex:1;padding:6px 10px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text)">
+              <label style="font-size:12px;color:var(--text2);white-space:nowrap;display:flex;align-items:center;gap:5px"><input type="checkbox" id="copyRulesSelectAll" checked> Select all</label>
+            </div>
+            <div id="copyRulesListBox" style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:6px"></div>
+            <div style="font-size:11px;color:var(--text2);margin-top:6px" id="copyRulesCount"></div>
           </div>
         </div>
-        <div style="display:flex;gap:10px;margin-bottom:16px">
+        <div style="display:flex;gap:10px;margin-top:16px" id="copyRulesInitialBtns">
           <button class="btn btn-secondary" style="flex:1" id="copyRulesNoBtn">No thanks, start fresh</button>
-          <button class="btn btn-primary" style="flex:1" id="copyRulesYesBtn">Yes, copy rules</button>
+          <button class="btn btn-primary" style="flex:1" id="copyRulesYesBtn">Copy rules…</button>
         </div>
-        <div id="copyRulesConfirmRow" style="display:none">
+        <div id="copyRulesConfirmRow" style="display:none;margin-top:16px">
           <div class="modal-btns">
-            <button class="btn btn-secondary" onclick="document.getElementById('copyRulesYesSection').style.display='none';document.getElementById('copyRulesConfirmRow').style.display='none'">Back</button>
-            <button class="btn btn-primary" id="copyRulesConfirmBtn">Copy &amp; continue</button>
+            <button class="btn btn-secondary" id="copyRulesBackBtn">Start fresh instead</button>
+            <button class="btn btn-primary" id="copyRulesConfirmBtn">Copy selected &amp; continue</button>
           </div>
         </div>
       </div>`;
     document.body.appendChild(overlay);
+
+    let loadedRules=[]; // [{keyword,bucket}]
+    const catMap=getCatMap();
+    const box=()=>document.getElementById('copyRulesListBox');
+
+    function renderPickList(){
+      const q=(document.getElementById('copyRulesSearch').value||'').toLowerCase().trim();
+      const rows=loadedRules
+        .map((r,i)=>({r,i}))
+        .filter(({r})=>!q||r.keyword.toLowerCase().includes(q)||(catMap[r.bucket]?.label||r.bucket).toLowerCase().includes(q));
+      box().innerHTML=rows.length?rows.map(({r,i})=>`
+        <label class="rule-row" style="cursor:pointer;gap:8px">
+          <input type="checkbox" class="copyRuleChk" data-i="${i}" ${r._sel?'checked':''}>
+          <span class="rule-merchant">${r.keyword.replace(/</g,'&lt;')}</span>
+          <span class="rule-arrow">→</span>
+          <span class="rule-cat" style="color:${catMap[r.bucket]?.color||'#6b7280'}">${catMap[r.bucket]?.label||r.bucket}</span>
+        </label>`).join(''):'<div class="empty">No rules match.</div>';
+      box().querySelectorAll('.copyRuleChk').forEach(chk=>{
+        chk.onchange=()=>{loadedRules[+chk.dataset.i]._sel=chk.checked;updateCount();};
+      });
+    }
+    function updateCount(){
+      const sel=loadedRules.filter(r=>r._sel).length;
+      document.getElementById('copyRulesCount').textContent=`${sel} of ${loadedRules.length} rules selected`;
+    }
+
     document.getElementById('copyRulesNoBtn').onclick=()=>{overlay.remove();resolve(null);};
     document.getElementById('copyRulesYesBtn').onclick=()=>{
       document.getElementById('copyRulesYesSection').style.display='block';
+      document.getElementById('copyRulesInitialBtns').style.display='none';
+    };
+    document.getElementById('copyRulesBackBtn').onclick=()=>{overlay.remove();resolve(null);};
+    document.getElementById('copyRulesLoadBtn').onclick=async()=>{
+      const src=document.getElementById('copyRulesSource').value;
+      const btn=document.getElementById('copyRulesLoadBtn');
+      btn.disabled=true;btn.textContent='Loading…';
+      const{data:srcRules,error}=await db.from('merchant_rules').select('keyword,bucket').eq('workspace_id',src).neq('bucket','__ask_later__');
+      btn.disabled=false;btn.textContent='Load rules';
+      if(error){alert('Could not load rules: '+error.message);return;}
+      loadedRules=(srcRules||[]).map(r=>({keyword:r.keyword,bucket:r.bucket,_sel:true}));
+      document.getElementById('copyRulesPicker').style.display=loadedRules.length?'block':'none';
       document.getElementById('copyRulesConfirmRow').style.display='block';
-      document.getElementById('copyRulesYesBtn').style.display='none';
-      document.getElementById('copyRulesNoBtn').style.display='none';
+      if(!loadedRules.length){box().innerHTML='';alert('That workspace has no learned rules to copy.');return;}
+      document.getElementById('copyRulesSelectAll').checked=true;
+      renderPickList();updateCount();
+    };
+    document.getElementById('copyRulesSearch').oninput=renderPickList;
+    document.getElementById('copyRulesSelectAll').onchange=e=>{
+      loadedRules.forEach(r=>r._sel=e.target.checked);renderPickList();updateCount();
     };
     document.getElementById('copyRulesConfirmBtn').onclick=()=>{
-      const src=document.getElementById('copyRulesSource').value;
-      overlay.remove();resolve(src||null);
+      const chosen=loadedRules.filter(r=>r._sel).map(r=>({keyword:r.keyword,bucket:r.bucket}));
+      overlay.remove();resolve(chosen);
     };
   });
 }
@@ -2309,21 +2364,58 @@ function exportPDF(){
   window.open(url,'_blank');
 }
 
+function builtinRuleList(){
+  // Flatten the code-based KW_RULES into {kw,cat} rows for display. These apply to every workspace.
+  const out=[];
+  for(const r of KW_RULES)for(const k of r.kw)out.push({kw:k,cat:r.cat});
+  return out;
+}
+
 function renderRules(){
   const catMap=getCatMap();
-  const entries=Object.entries(merchantRules).sort((a,b)=>a[0].localeCompare(b[0]));
-  document.getElementById('rulesList').innerHTML=entries.length?entries.map(([mk,cat])=>`
+  const q=(document.getElementById('rulesSearch')?.value||'').toLowerCase().trim();
+  const catLabel=cat=>`<span class="rule-cat" style="color:${catMap[cat]?.color||'#6b7280'}">${catMap[cat]?.label||cat}</span>`;
+
+  // Learned rules (from the database, this workspace) — exact merchant matches you can remove.
+  let learned=Object.entries(merchantRules).sort((a,b)=>a[0].localeCompare(b[0]));
+  if(q)learned=learned.filter(([mk,cat])=>mk.toLowerCase().includes(q)||(catMap[cat]?.label||cat).toLowerCase().includes(q));
+  const learnedHtml=learned.length?learned.map(([mk,cat])=>`
     <div class="rule-row">
       <span class="rule-merchant">${mk}</span>
-      <span class="rule-arrow">→</span>
-      <span class="rule-cat" style="color:${catMap[cat]?.color||'#6b7280'}">${catMap[cat]?.label||cat}</span>
-      <button class="btn-danger" onclick="deleteRule('${mk}')">Remove</button>
-    </div>`).join(''):'<div class="empty">No rules saved yet.</div>';
+      <span class="rule-arrow">→</span>${catLabel(cat)}
+      <button class="btn-danger" onclick="deleteRule('${mk.replace(/'/g,"\\'")}')">Remove</button>
+    </div>`).join(''):`<div class="empty">${q?'No learned rules match your search.':'No learned rules yet — they build up as you categorize merchants during import review.'}</div>`;
+
+  // Built-in rules (from the app, apply to all workspaces) — Robyn's keyword ruleset. Read-only.
+  let builtin=builtinRuleList();
+  if(q)builtin=builtin.filter(r=>r.kw.toLowerCase().includes(q)||(catMap[r.cat]?.label||r.cat).toLowerCase().includes(q));
+  const builtinHtml=builtin.length?builtin.map(r=>`
+    <div class="rule-row" style="opacity:.85">
+      <span class="rule-merchant">${r.kw}</span>
+      <span class="rule-arrow">→</span>${catLabel(r.cat)}
+    </div>`).join(''):`<div class="empty">${q?'No built-in rules match your search.':'None.'}</div>`;
+
+  document.getElementById('rulesList').innerHTML=`
+    <div class="section-label" style="margin:4px 0 8px;font-size:11px">Learned rules — this workspace, removable (${learned.length})</div>
+    ${learnedHtml}
+    <div class="section-label" style="margin:24px 0 8px;font-size:11px">Built-in rules — apply to every workspace (${builtin.length})</div>
+    ${builtinHtml}`;
 }
 
 async function deleteRule(mk){
   await removeRule(mk);
   document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
+  renderRules();
+}
+
+async function clearAllRules(){
+  const n=Object.keys(merchantRules).length;
+  if(n===0){alert('There are no learned rules to clear. (Built-in rules stay in the app and cannot be cleared here.)');return;}
+  if(!confirm(`Clear all ${n} learned merchant rules for this workspace?\n\nBuilt-in rules are unaffected. This cannot be undone.`))return;
+  const{error}=await wsFilter(db.from('merchant_rules').delete()).neq('bucket','');
+  if(error){alert('Failed to clear rules: '+error.message);return;}
+  merchantRules={};askLater=new Set();
+  document.getElementById('rulesBadge').textContent=0;
   renderRules();
 }
 
