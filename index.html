@@ -628,6 +628,38 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
   </div>
 
   <div class="screen" id="screen-rules">
+    <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:24px;background:var(--bg2)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px">
+        <div class="section-label" style="margin-bottom:0">🤖 Categorizer bot <span style="color:var(--text2);font-weight:400">— per workspace</span></div>
+        <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;white-space:nowrap"><input type="checkbox" id="botEnabled" onchange="onBotToggle(this.checked)"> Enabled</label>
+      </div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">When a transaction isn't matched by a rule or your bank's category, the bot can categorize it with AI using this workspace's categories and the notes below. Each answer is saved as a learned rule, so it's only paid for once.</p>
+      <div id="botBody" style="display:none">
+        <div class="modal-field" style="margin-bottom:10px">
+          <label style="font-size:12px">Household notes / quirks (plain English — the bot reads these)</label>
+          <textarea id="botNotes" rows="4" placeholder="e.g. Kroger Fuel is always gas. 365 Market is Food at Work. Venmo to Laura Yost is soccer. Goodleap at $715 is the personal loan; at $161 it's the HVAC loan." style="width:100%;padding:8px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);resize:vertical"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="modal-field" style="flex:1;min-width:200px;margin-bottom:0">
+            <label style="font-size:12px">Anthropic API key (stored for this workspace)</label>
+            <input type="password" id="botKey" placeholder="sk-ant-…" style="width:100%;padding:7px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+          </div>
+          <div class="modal-field" style="width:150px;margin-bottom:0">
+            <label style="font-size:12px">Model</label>
+            <select id="botModel" style="width:100%">
+              <option value="claude-haiku-4-5-20251001">Haiku 4.5 (cheap)</option>
+              <option value="claude-sonnet-5">Sonnet 5 (smart)</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="saveBotConfigFromUI()" style="padding:7px 14px;font-size:12px">Save bot settings</button>
+          <button class="btn btn-primary" id="botRunBtn" onclick="runBot()" style="padding:7px 14px;font-size:12px">Categorize unmatched with bot</button>
+          <span id="botStatus" style="font-size:12px;color:var(--text2)"></span>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:8px">Only merchant names + amounts are sent to Anthropic — never account numbers. Get a key at console.anthropic.com → API Keys.</div>
+      </div>
+    </div>
     <div class="section-label" style="margin-bottom:12px">Custom categories</div>
     <div id="customCatsList" style="margin-bottom:24px"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
@@ -685,6 +717,7 @@ const APP_SETTING_GOALS='savings_goals';
 const APP_SETTING_BILLS='recurring_bills';
 const APP_SETTING_EXTRAS='extras';
 const APP_SETTING_KEYWORD_RULES='keyword_rules';
+const APP_SETTING_BOT='bot_config';
 let budgetTargets={};
 let debtState={debts:[],strategy:'avalanche',extra:0};
 let nwsOverrides={};
@@ -706,6 +739,8 @@ function nwsClass(catId){return nwsOverrides[catId]||NWS_DEFAULT[catId]||'wants'
 let merchantRules={},askLater=new Set();
 // Per-workspace keyword rules (ordered array of {kw,cat}). Empty for a fresh workspace — nothing is forced globally.
 let keywordRules=[];
+// Per-workspace AI categorizer bot. BYO key, stored per workspace.
+let botConfig={enabled:false,notes:'',model:'claude-haiku-4-5-20251001',apiKey:''};
 
 function txnToRow(t){
   return{id:t.id,date:t.date,description:t.desc,amount:t.amount,cat:t.cat||'other',note:t.note||'',needs_review:!!t.needsReview,txn_review:!!t.txnReview,confident:!!t.confident,format:t.format||'app'};
@@ -724,7 +759,7 @@ async function loadAllData(){
   const [txnRes, ruleRes, settingRes] = await Promise.all([
     wsFilter(db.from('transactions').select('*').order('inserted_at').range(0, 20000)),
     wsFilter(db.from('merchant_rules').select('*').range(0, 20000)),
-    wsFilter(db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH,APP_SETTING_GOALS,APP_SETTING_BILLS,APP_SETTING_EXTRAS,APP_SETTING_KEYWORD_RULES]))
+    wsFilter(db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH,APP_SETTING_GOALS,APP_SETTING_BILLS,APP_SETTING_EXTRAS,APP_SETTING_KEYWORD_RULES,APP_SETTING_BOT]))
   ]);
   if(txnRes.error)console.error('load txns',txnRes.error);
   if(ruleRes.error)console.error('load rules',ruleRes.error);
@@ -733,6 +768,7 @@ async function loadAllData(){
   allTxns=(txnRes.data||[]).map(rowToTxn);
   merchantRules={};askLater=new Set();
   keywordRules=[];
+  botConfig={enabled:false,notes:'',model:'claude-haiku-4-5-20251001',apiKey:''};
   debtState={debts:[],strategy:'avalanche',extra:0};
   nwsOverrides={};
   netWorthState={assets:[],liabilities:[],snapshots:[]};
@@ -772,6 +808,9 @@ async function loadAllData(){
     if(s.key===APP_SETTING_KEYWORD_RULES && Array.isArray(s.value)){
       // This workspace's own keyword rules (ordered). A fresh workspace has none.
       keywordRules=s.value.filter(r=>r&&r.kw&&r.cat).map(r=>({kw:String(r.kw),cat:String(r.cat)}));
+    }
+    if(s.key===APP_SETTING_BOT && s.value && typeof s.value==='object'){
+      botConfig={enabled:!!s.value.enabled,notes:s.value.notes||'',model:s.value.model||'claude-haiku-4-5-20251001',apiKey:s.value.apiKey||''};
     }
   });
   ensureBudgetStructure();
@@ -2417,6 +2456,91 @@ function renderRules(){
     ${kwHtml}`;
 }
 
+function renderBotConfig(){
+  const en=document.getElementById('botEnabled'); if(!en)return;
+  en.checked=!!botConfig.enabled;
+  document.getElementById('botBody').style.display=botConfig.enabled?'block':'none';
+  document.getElementById('botNotes').value=botConfig.notes||'';
+  document.getElementById('botKey').value=botConfig.apiKey||'';
+  document.getElementById('botModel').value=botConfig.model||'claude-haiku-4-5-20251001';
+  const st=document.getElementById('botStatus'); if(st)st.textContent='';
+}
+function onBotToggle(on){
+  botConfig.enabled=on;
+  document.getElementById('botBody').style.display=on?'block':'none';
+  saveBotConfig();
+}
+function saveBotConfigFromUI(){
+  botConfig.notes=document.getElementById('botNotes').value;
+  botConfig.apiKey=document.getElementById('botKey').value.trim();
+  botConfig.model=document.getElementById('botModel').value;
+  saveBotConfig();
+  const st=document.getElementById('botStatus'); if(st){st.textContent='● saved';st.style.color='var(--pos)';}
+}
+async function saveBotConfig(){
+  const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_BOT,value:botConfig,updated_at:new Date().toISOString()}));
+  if(error){console.error('saveBotConfig',error);alert('Could not save bot settings: '+error.message);}
+}
+
+async function runBot(){
+  const st=document.getElementById('botStatus');
+  const btn=document.getElementById('botRunBtn');
+  const setStatus=(t,c)=>{if(st){st.textContent=t;st.style.color=c||'var(--text2)';}};
+  // Pull latest field values in case they typed but didn't hit save
+  botConfig.notes=document.getElementById('botNotes').value;
+  botConfig.apiKey=document.getElementById('botKey').value.trim();
+  botConfig.model=document.getElementById('botModel').value;
+  if(!botConfig.apiKey){alert('Add your Anthropic API key and click Save bot settings first.');return;}
+  // Unmatched = still needs review and sitting in "other"
+  const unmatched=allTxns.filter(t=>t.needsReview&&(t.cat==='other'||!t.cat));
+  if(!unmatched.length){setStatus('● nothing to categorize','var(--text2)');return;}
+  // Group by merchant key (that's what a learned rule matches on)
+  const groups={};
+  for(const t of unmatched){const mk=getMK(t.desc);if(!groups[mk])groups[mk]={label:getCanon(t.desc),txns:[]};groups[mk].txns.push(t);}
+  const mks=Object.keys(groups).slice(0,300);
+  const merchants=mks.map(mk=>groups[mk].label);
+  const validIds=new Set(CATS.map(c=>c.id));
+  const catLines=CATS.filter(c=>c.id!=='income').map(c=>`${c.id} = ${c.label}`).join('\n');
+  const system=`You categorize bank transaction descriptions into a household's budget categories.
+Use ONLY these category ids (left side):
+${catLines}
+${botConfig.notes?('\nHousehold notes / rules to follow:\n'+botConfig.notes+'\n'):''}
+You will get a JSON array of merchant descriptions. Return ONLY a JSON array of category ids, exactly one per input, in the same order. No prose, no code fences. If genuinely unsure, use "other".`;
+  btn.disabled=true;btn.textContent='Categorizing…';setStatus('● calling Claude…');
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'content-type':'application/json','x-api-key':botConfig.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:botConfig.model,max_tokens:4096,
+        system:[{type:'text',text:system,cache_control:{type:'ephemeral'}}],
+        messages:[{role:'user',content:'Categorize these merchants:\n'+JSON.stringify(merchants)}]
+      })
+    });
+    const data=await r.json();
+    if(!r.ok){setStatus('● error: '+(data.error?.message||r.status),'var(--neg)');btn.disabled=false;btn.textContent='Categorize unmatched with bot';return;}
+    let text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+    text=text.replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
+    let cats;
+    try{cats=JSON.parse(text);}catch(e){setStatus('● could not parse AI response','var(--neg)');console.error('bot parse',text);btn.disabled=false;btn.textContent='Categorize unmatched with bot';return;}
+    if(!Array.isArray(cats)){setStatus('● unexpected AI response','var(--neg)');btn.disabled=false;btn.textContent='Categorize unmatched with bot';return;}
+    let nTxn=0,nMerch=0;const changed=[];
+    for(let i=0;i<mks.length;i++){
+      let cat=cats[i];
+      if(typeof cat!=='string'||!validIds.has(cat)||cat==='other')continue;
+      nMerch++;
+      for(const t of groups[mks[i]].txns){t.cat=cat;t.needsReview=false;t.txnReview=false;t.confident=true;changed.push(t);nTxn++;}
+      await upsertRule(mks[i],cat);
+    }
+    await upsertTxns(changed);
+    merchantQueue=buildMerchantQueue(allTxns);txnQueue=buildTxnQueue(allTxns);
+    updateBadges();renderRules();
+    const skipped=mks.length-nMerch;
+    setStatus(`● done — ${nMerch} merchants, ${nTxn} transactions${skipped?`, ${skipped} left for review`:''}`,'var(--pos)');
+  }catch(e){setStatus('● network error: '+e.message,'var(--neg)');}
+  btn.disabled=false;btn.textContent='Categorize unmatched with bot';
+}
+
 async function saveKeywordRules(){
   const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_KEYWORD_RULES,value:keywordRules,updated_at:new Date().toISOString()}));
   if(error){console.error('saveKeywordRules',error);alert('Could not save keyword rules: '+error.message);}
@@ -2464,7 +2588,7 @@ function showTab(tab){
   if(tab==='bills')renderBills();
   if(tab==='challenge')renderChallenge();
   if(tab==='forecast')renderForecast();
-  if(tab==='rules')renderRules();
+  if(tab==='rules'){renderRules();renderBotConfig();}
   if(tab==='review')renderMerchantReview();
   if(tab==='txnreview')renderTxnReview();
 }
