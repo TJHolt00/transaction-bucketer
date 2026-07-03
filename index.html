@@ -1675,7 +1675,7 @@ function renderBudgetScreen(){
     const p=t.date.split('/');
     return `${p[2]||'25'}-${p[0].padStart(2,'0')}`===month;
   });
-  const spend=monthTxns.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
+  const spend=monthTxns.filter(t=>t.amount<0&&t.cat!=='transfers').reduce((s,t)=>s+Math.abs(t.amount),0);
   const budgetRemaining=budget.total?budget.total-spend:null;
   const targetGap=budget.total?budget.total-spend:0;
   document.getElementById('budgetTotalInput').value=budget.total?budget.total.toFixed(0):'';
@@ -1690,7 +1690,7 @@ function renderBudgetScreen(){
   document.getElementById('bRemain').textContent=budget.total?((budgetRemaining>=0?'+':'-')+fmt(Math.abs(budgetRemaining))):'—';
   document.getElementById('bGoal').textContent=budget.savingsGoal?fmt(budget.savingsGoal):'—';
   document.getElementById('bGap').textContent=budget.total?((targetGap>=0?'+':'-')+fmt(Math.abs(targetGap))):'—';
-  const categories=CATS.filter(c=>c.id!=='income');
+  const categories=CATS.filter(c=>c.id!=='income'&&c.id!=='transfers');
   document.getElementById('budgetCategoryTable').innerHTML=categories.map(c=>{
     const target=budget.categories[c.id]||'';
     const spent=monthTxns.filter(t=>t.cat===c.id&&t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
@@ -2252,8 +2252,8 @@ function renderDashboard(){
   if(typeF==='income')txns=txns.filter(t=>t.amount>0);
   if(typeF==='review')txns=txns.filter(t=>t.needsReview);
   if(activeCat!=='all')txns=txns.filter(t=>t.cat===activeCat);
-  const income=txns.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
-  const spend=txns.filter(t=>t.amount<0).reduce((s,t)=>s+t.amount,0);
+  const income=txns.filter(t=>t.amount>0&&t.cat!=='transfers').reduce((s,t)=>s+t.amount,0);
+  const spend=txns.filter(t=>t.amount<0&&t.cat!=='transfers').reduce((s,t)=>s+t.amount,0);
   const net=income+spend;
   document.getElementById('mInc').textContent=fmt(income);
   document.getElementById('mSpend').textContent='-'+fmt(spend);
@@ -2274,7 +2274,7 @@ function renderDashboard(){
   const nrEl=document.getElementById('unreviewedNote');
   if(nr>0){nrEl.style.display='block';nrEl.textContent=`${nr} transactions still need review — tap to continue`;}else nrEl.style.display='none';
   const catTotals={};CATS.forEach(c=>catTotals[c.id]=0);
-  txns.filter(t=>t.amount<0).forEach(t=>{catTotals[t.cat]=(catTotals[t.cat]||0)+Math.abs(t.amount);});
+  txns.filter(t=>t.amount<0&&t.cat!=='transfers').forEach(t=>{catTotals[t.cat]=(catTotals[t.cat]||0)+Math.abs(t.amount);});
   const sorted=CATS.filter(c=>c.id!=='income').map(c=>({...c,total:catTotals[c.id]||0,count:txns.filter(t=>t.cat===c.id).length})).filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
   if(pieChart){pieChart.destroy();pieChart=null;}
   if(sorted.some(c=>c.total>0)){
@@ -2357,9 +2357,9 @@ function exportCSV(){
   const catMap=getCatMap();
   const catTotals={};
   CATS.forEach(c=>catTotals[c.id]=0);
-  txns.filter(t=>t.amount<0).forEach(t=>{catTotals[t.cat]=(catTotals[t.cat]||0)+Math.abs(t.amount);});
-  const income=txns.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
-  const spend=txns.filter(t=>t.amount<0).reduce((s,t)=>s+t.amount,0);
+  txns.filter(t=>t.amount<0&&t.cat!=='transfers').forEach(t=>{catTotals[t.cat]=(catTotals[t.cat]||0)+Math.abs(t.amount);});
+  const income=txns.filter(t=>t.amount>0&&t.cat!=='transfers').reduce((s,t)=>s+t.amount,0);
+  const spend=txns.filter(t=>t.amount<0&&t.cat!=='transfers').reduce((s,t)=>s+t.amount,0);
   let csv='SPENDING SUMMARY\n';
   csv+=`Period,${month==='all'?'All time':month}\n`;
   csv+=`Total Income,$${income.toFixed(2)}\n`;
@@ -2388,9 +2388,9 @@ function exportPDF(){
   const catMap=getCatMap();
   const catTotals={};
   CATS.forEach(c=>catTotals[c.id]=0);
-  txns.filter(t=>t.amount<0).forEach(t=>{catTotals[t.cat]=(catTotals[t.cat]||0)+Math.abs(t.amount);});
-  const income=txns.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
-  const spend=txns.filter(t=>t.amount<0).reduce((s,t)=>s+t.amount,0);
+  txns.filter(t=>t.amount<0&&t.cat!=='transfers').forEach(t=>{catTotals[t.cat]=(catTotals[t.cat]||0)+Math.abs(t.amount);});
+  const income=txns.filter(t=>t.amount>0&&t.cat!=='transfers').reduce((s,t)=>s+t.amount,0);
+  const spend=txns.filter(t=>t.amount<0&&t.cat!=='transfers').reduce((s,t)=>s+t.amount,0);
   const net=income+spend;
   const sorted=CATS.filter(c=>c.id!=='income'&&catTotals[c.id]>0).sort((a,b)=>catTotals[b.id]-catTotals[a.id]);
   const label=month==='all'?'All Time':month;
