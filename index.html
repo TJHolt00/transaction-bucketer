@@ -670,6 +670,18 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
         <div style="font-size:11px;color:var(--text2);margin-top:8px">Only merchant names + amounts are sent to Anthropic — never account numbers. Get a key at console.anthropic.com → API Keys.</div>
       </div>
     </div>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:24px;background:var(--bg2)">
+      <div class="section-label" style="margin-bottom:6px">⚑ Always-ask rules <span style="color:var(--text2);font-weight:400">— per workspace</span></div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Merchants here get flagged for one-by-one review on every import — even if a rule already knows them — for charges you want to eyeball each time (an unidentified subscription, a service you cancelled). A blank workspace has none.</p>
+      <label style="font-size:12px;color:var(--text);display:flex;align-items:center;gap:6px;margin-bottom:14px"><input type="checkbox" id="specialZelle" onchange="toggleSpecialZelle(this.checked)"> Treat unnamed Zelle transfers (no name attached) as transfers automatically</label>
+      <div id="alwaysAskList" style="margin-bottom:10px"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <input type="text" id="aaMatch" placeholder="text to match (e.g. planet fitness)" style="flex:1;min-width:150px;padding:6px 10px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+        <select id="aaCat" style="padding:6px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text)"></select>
+        <input type="text" id="aaNote" placeholder="hint note (optional)" style="flex:1;min-width:130px;padding:6px 10px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+        <button class="btn btn-secondary" onclick="addAlwaysAsk()" style="padding:6px 12px;font-size:12px;white-space:nowrap">+ Add</button>
+      </div>
+    </div>
     <div class="section-label" style="margin-bottom:12px">Custom categories</div>
     <div id="customCatsList" style="margin-bottom:24px"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
@@ -728,6 +740,7 @@ const APP_SETTING_BILLS='recurring_bills';
 const APP_SETTING_EXTRAS='extras';
 const APP_SETTING_KEYWORD_RULES='keyword_rules';
 const APP_SETTING_BOT='bot_config';
+const APP_SETTING_SPECIAL='special_rules';
 let budgetTargets={};
 let debtState={debts:[],strategy:'avalanche',extra:0};
 let nwsOverrides={};
@@ -751,6 +764,9 @@ let merchantRules={},askLater=new Set();
 let keywordRules=[];
 // Per-workspace AI categorizer bot. BYO key, stored per workspace.
 let botConfig={enabled:false,notes:'',model:'claude-haiku-4-5-20251001',apiKey:''};
+// Per-workspace "special rules": deterministic overrides applied at import time.
+// Empty for a fresh workspace — nothing is forced globally.
+let specialRules={zelleUnnamedAsTransfer:false,alwaysAsk:[]};
 
 function txnToRow(t){
   return{id:t.id,date:t.date,description:t.desc,amount:t.amount,cat:t.cat||'other',note:t.note||'',needs_review:!!t.needsReview,txn_review:!!t.txnReview,confident:!!t.confident,format:t.format||'app'};
@@ -769,7 +785,7 @@ async function loadAllData(){
   const [txnRes, ruleRes, settingRes] = await Promise.all([
     wsFilter(db.from('transactions').select('*').order('inserted_at').range(0, 20000)),
     wsFilter(db.from('merchant_rules').select('*').range(0, 20000)),
-    wsFilter(db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH,APP_SETTING_GOALS,APP_SETTING_BILLS,APP_SETTING_EXTRAS,APP_SETTING_KEYWORD_RULES,APP_SETTING_BOT]))
+    wsFilter(db.from('app_settings').select('*').in('key',[APP_SETTING_CUSTOM_CATS,APP_SETTING_BUDGETS,APP_SETTING_DEBTS,APP_SETTING_NWS,APP_SETTING_NETWORTH,APP_SETTING_GOALS,APP_SETTING_BILLS,APP_SETTING_EXTRAS,APP_SETTING_KEYWORD_RULES,APP_SETTING_BOT,APP_SETTING_SPECIAL]))
   ]);
   if(txnRes.error)console.error('load txns',txnRes.error);
   if(ruleRes.error)console.error('load rules',ruleRes.error);
@@ -779,6 +795,7 @@ async function loadAllData(){
   merchantRules={};askLater=new Set();
   keywordRules=[];
   botConfig={enabled:false,notes:'',model:'claude-haiku-4-5-20251001',apiKey:''};
+  specialRules={zelleUnnamedAsTransfer:false,alwaysAsk:[]};
   debtState={debts:[],strategy:'avalanche',extra:0};
   nwsOverrides={};
   netWorthState={assets:[],liabilities:[],snapshots:[]};
@@ -821,6 +838,12 @@ async function loadAllData(){
     }
     if(s.key===APP_SETTING_BOT && s.value && typeof s.value==='object'){
       botConfig={enabled:!!s.value.enabled,notes:s.value.notes||'',model:s.value.model||'claude-haiku-4-5-20251001',apiKey:s.value.apiKey||''};
+    }
+    if(s.key===APP_SETTING_SPECIAL && s.value && typeof s.value==='object'){
+      specialRules={
+        zelleUnnamedAsTransfer:!!s.value.zelleUnnamedAsTransfer,
+        alwaysAsk:Array.isArray(s.value.alwaysAsk)?s.value.alwaysAsk.filter(r=>r&&r.match).map(r=>({match:String(r.match),cat:String(r.cat||'other'),note:String(r.note||'')})):[]
+      };
     }
   });
   ensureBudgetStructure();
@@ -1892,6 +1915,15 @@ function isAlwaysReview(desc){const dl=desc.toLowerCase();return ALWAYS_REVIEW.s
 
 function autoAssign(desc,bankCat){
   const dl=desc.toLowerCase(),mk=getMK(desc);
+  // Per-workspace "always ask": force one-by-one review every import, with a hint
+  // note. Checked first so it wins even over a learned rule for this merchant.
+  for(const r of (specialRules.alwaysAsk||[])){
+    if(r.match && dl.includes(String(r.match).toLowerCase()))
+      return{cat:r.cat||'other',confident:false,needsReview:true,txnReview:true,note:r.note||''};
+  }
+  // Per-workspace toggle: an unnamed Zelle (no "*") is an internal transfer, not spending.
+  if(specialRules.zelleUnnamedAsTransfer && /zelle transaction/i.test(desc) && !/\*/.test(desc))
+    return{cat:'transfers',confident:true};
   if(merchantRules[mk])return{cat:merchantRules[mk],confident:true};
   if(isAlwaysReview(desc))return{cat:'other',confident:false,needsReview:true};
   // This workspace's own keyword rules (ordered), checked BEFORE the bank's category
@@ -2017,8 +2049,8 @@ function parseCsv(text){
       amt=parseFloat(cols[3].replace(/[$,]/g,''));
     }
     if(!dateStr||!desc||isNaN(amt))continue;
-    const{cat,confident,needsReview,txnReview}=autoAssign(desc,bankCat);
-    txns.push({date:dateStr,desc,amount:amt,cat,note:'',needsReview:!!needsReview,txnReview:!!txnReview,confident:!!confident,format});
+    const{cat,confident,needsReview,txnReview,note}=autoAssign(desc,bankCat);
+    txns.push({date:dateStr,desc,amount:amt,cat,note:note||'',needsReview:!!needsReview,txnReview:!!txnReview,confident:!!confident,format});
   }
   return txns;
 }
@@ -2498,6 +2530,39 @@ function renderBotConfig(){
   document.getElementById('botModel').value=botConfig.model||'claude-haiku-4-5-20251001';
   const st=document.getElementById('botStatus'); if(st)st.textContent='';
 }
+function renderSpecialRules(){
+  const z=document.getElementById('specialZelle'); if(!z)return;
+  z.checked=!!specialRules.zelleUnnamedAsTransfer;
+  const sel=document.getElementById('aaCat');
+  if(sel){const cur=sel.value;sel.innerHTML=CATS.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');if(cur)sel.value=cur;}
+  const catMap=getCatMap();
+  const items=specialRules.alwaysAsk||[];
+  document.getElementById('alwaysAskList').innerHTML=items.length?items.map((r,i)=>`
+    <div class="rule-row">
+      <div style="flex:1;min-width:0">
+        <div class="rule-merchant" style="flex:none">${String(r.match).replace(/</g,'&lt;')}</div>
+        ${r.note?`<div style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">“${String(r.note).replace(/</g,'&lt;')}”</div>`:''}
+      </div>
+      <span class="rule-arrow">→</span><span class="rule-cat" style="color:${catMap[r.cat]?.color||'#6b7280'}">${catMap[r.cat]?.label||r.cat}</span>
+      <button class="btn-danger" onclick="deleteAlwaysAsk(${i})">Remove</button>
+    </div>`).join(''):`<div class="empty">No always-ask rules in this workspace.</div>`;
+}
+function toggleSpecialZelle(on){specialRules.zelleUnnamedAsTransfer=on;saveSpecialRules();}
+function addAlwaysAsk(){
+  const m=document.getElementById('aaMatch').value.trim();
+  if(!m){alert('Enter some text to match.');return;}
+  const cat=document.getElementById('aaCat').value||'other';
+  const note=document.getElementById('aaNote').value.trim();
+  specialRules.alwaysAsk=specialRules.alwaysAsk||[];
+  specialRules.alwaysAsk.push({match:m.toLowerCase(),cat,note});
+  document.getElementById('aaMatch').value='';document.getElementById('aaNote').value='';
+  saveSpecialRules();renderSpecialRules();
+}
+function deleteAlwaysAsk(i){specialRules.alwaysAsk.splice(i,1);saveSpecialRules();renderSpecialRules();}
+async function saveSpecialRules(){
+  const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_SPECIAL,value:specialRules,updated_at:new Date().toISOString()}));
+  if(error)console.error('saveSpecialRules',error);
+}
 function onBotToggle(on){
   botConfig.enabled=on;
   document.getElementById('botBody').style.display=on?'block':'none';
@@ -2621,7 +2686,7 @@ function showTab(tab){
   if(tab==='bills')renderBills();
   if(tab==='challenge')renderChallenge();
   if(tab==='forecast')renderForecast();
-  if(tab==='rules'){renderRules();renderBotConfig();}
+  if(tab==='rules'){renderRules();renderBotConfig();renderSpecialRules();}
   if(tab==='review')renderMerchantReview();
   if(tab==='txnreview')renderTxnReview();
 }
