@@ -1890,82 +1890,25 @@ function getCanon(desc){
 
 function isAlwaysReview(desc){const dl=desc.toLowerCase();return ALWAYS_REVIEW.some(k=>dl.includes(k));}
 
-// ── Patch: household-specific overrides ─────────────────────────────────────
-// A Zelle with no attached name (no "*") is a generic transfer, not spending.
-// Filter it out entirely rather than flagging it for review every import.
-function isGenericZelleTransfer(desc){
-  return /zelle transaction/i.test(desc) && !/\*/.test(desc);
-}
-
-// Merchants that must ALWAYS be confirmed per-transaction, even after a
-// category is known — because the household wants a fresh check every time
-// (an unidentified recurring charge, or a subscription that should be cancelled).
-// txnReview:true routes these to the one-by-one queue, never the batch
-// "set a rule for all matching transactions" merchant queue, so confirming
-// once can never silently suppress future confirmations.
-function alwaysConfirm(desc){
-  const d = desc.toLowerCase();
-  if (d.includes('apple.com/bill')) return { cat:'subscriptions', note:'Confirm which person\'s subscription — there\'s a known unidentified charge here.' };
-  if (d.includes('planet fitness')) return { cat:'subscriptions', note:'Planet Fitness was cancelled — confirm this isn\'t a billing mistake.' };
-  if (d.includes('thrive market')) return { cat:'shopping', note:'Thrive Market was cancelled — confirm this isn\'t a billing mistake.' };
-  return null;
-}
-
-// Goodleap services two different loans distinguished only by amount
-// ($715.27 personal loan vs $161.81 HVAC loan) — easy to mix up, always flag.
-function goodleapNote(amount){
-  const isHvac = Math.abs(amount + 161.81) < 3;
-  return isHvac
-    ? 'Looks like the HVAC loan ($161.81) — confirm.'
-    : 'Looks like the personal loan ($715.27) — confirm.';
-}
-
-function autoAssign(desc,bankCat,amount){
+function autoAssign(desc,bankCat){
   const dl=desc.toLowerCase(),mk=getMK(desc);
-
-  // 1. Generic no-name Zelle = transfer, not spending. Always wins, never flagged.
-  if (isGenericZelleTransfer(desc)) return { cat:'transfers', confident:true, note:'' };
-
-  // 2. Goodleap — always ask, regardless of any learned rule, since the two
-  //    loans are easy to mix up and the household wants the amount checked.
-  if (dl.includes('goodleap')) {
-    return { cat:'debt', confident:false, needsReview:true, txnReview:true, note: goodleapNote(amount) };
-  }
-
-  // 3. Always-confirm merchants — ask every time, even if a learned rule
-  //    exists for this merchant key from before this patch.
-  const forced = alwaysConfirm(desc);
-  if (forced) return { cat: forced.cat, confident:false, needsReview:true, txnReview:true, note: forced.note };
-
-  // 4. Learned rules (exact merchant-key match) — highest priority for
-  //    everything else, since these are explicit past decisions.
-  if(merchantRules[mk])return{cat:merchantRules[mk],confident:true,note:''};
-
-  // 5. Generic Venmo/PayPal/CashApp/Zelle-with-a-name — always ask who & why,
-  //    unless a learned rule already matched above.
-  if(isAlwaysReview(desc))return{cat:'other',confident:false,needsReview:true,note:''};
-
-  // 6. This workspace's keyword rules — checked BEFORE the bank's own category
-  //    tag, because the whole point of several of these rules (365 Market,
-  //    AMK JPMC POLARIS) is to override a bank category that's flatly wrong
-  //    for this household (bank tags both "Fast Food"; they're actually
-  //    Food at Work). Letting bank category win here silently miscategorizes
-  //    every one of those transactions.
+  if(merchantRules[mk])return{cat:merchantRules[mk],confident:true};
+  if(isAlwaysReview(desc))return{cat:'other',confident:false,needsReview:true};
+  // This workspace's own keyword rules (ordered), checked BEFORE the bank's category
+  // tag so a workspace's explicit rule wins over a generic/wrong bank tag. A fresh
+  // workspace has none — nothing is forced.
   for(const r of keywordRules){
-    if(dl.includes(r.kw))return{cat:r.cat,confident:true,note:''};
+    if(dl.includes(r.kw))return{cat:r.cat,confident:true};
   }
-
-  // 7. Bank's own category tag, only if nothing more specific matched.
   if(bankCat){
     const bc=bankCat.toLowerCase().trim();
-    if(bc.includes('transfer'))return{cat:'transfers',confident:true,note:''};
-    if(bc.includes('paycheck'))return{cat:'income',confident:true,note:''};
+    if(bc.includes('transfer'))return{cat:'transfers',confident:true};
+    if(bc.includes('paycheck'))return{cat:'income',confident:true};
     const passthrough=BANK_CAT_PASSTHROUGH[bc];
-    if(passthrough)return{cat:passthrough,confident:true,note:''};
+    if(passthrough)return{cat:passthrough,confident:true};
   }
-
-  if(askLater.has(mk))return{cat:'other',confident:false,needsReview:true,txnReview:true,note:''};
-  return{cat:'other',confident:false,needsReview:true,note:''};
+  if(askLater.has(mk))return{cat:'other',confident:false,needsReview:true,txnReview:true};
+  return{cat:'other',confident:false,needsReview:true};
 }
 
 function parseCSVLine(line){
@@ -2074,8 +2017,8 @@ function parseCsv(text){
       amt=parseFloat(cols[3].replace(/[$,]/g,''));
     }
     if(!dateStr||!desc||isNaN(amt))continue;
-    const{cat,confident,needsReview,txnReview,note}=autoAssign(desc,bankCat,amt);
-    txns.push({date:dateStr,desc,amount:amt,cat,note:note||'',needsReview:!!needsReview,txnReview:!!txnReview,confident:!!confident,format});
+    const{cat,confident,needsReview,txnReview}=autoAssign(desc,bankCat);
+    txns.push({date:dateStr,desc,amount:amt,cat,note:'',needsReview:!!needsReview,txnReview:!!txnReview,confident:!!confident,format});
   }
   return txns;
 }
