@@ -2024,12 +2024,26 @@ function getCanon(desc){
   return s.replace(/\s+/g,' ').trim().substring(0,42);
 }
 
-// Human-friendly display name (Title Case of the canonical merchant string).
+// Human-friendly display name derived from the raw bank string.
 // Pure display transform — never mutates the stored desc.
+const NAME_NOISE=new Set(['purchase','pending','pos','ach','tfr','xfer','pymt','pymnt','pmt','agnt','payment','recur','recurring','debit','credit','llc','inc']);
+function titleWord(w){
+  // keep short all-caps acronyms as-is (AMK, YMCA, TJ, CVS)
+  if(/[A-Z]/.test(w)&&/^[A-Z0-9&.'-]{2,4}$/.test(w))return w;
+  // otherwise Title Case — capitalize after start/space/hyphen only (not apostrophes)
+  return w.toLowerCase().replace(/(^|[\s-])([a-z0-9])/g,(m,p,ch)=>p+ch.toUpperCase());
+}
 function cleanName(desc){
-  const c=getCanon(desc);
-  if(!c)return desc;
-  return c.toLowerCase().replace(/(^|\s)([a-z0-9])/g,(m,p,ch)=>p+ch.toUpperCase());
+  const canon=getCanon(desc);
+  if(!canon)return desc;
+  const words=canon.split(/\s+/).filter(Boolean);
+  let meaningful=words.filter(w=>!NAME_NOISE.has(w.toLowerCase().replace(/[^a-z0-9]/gi,''))&&!/^\d+$/.test(w));
+  if(!meaningful.length)meaningful=words;
+  const kept=[meaningful[0]];
+  const w2=meaningful[1];
+  // add a second word only if it's substantial (not a short location/code fragment)
+  if(w2&&w2.replace(/[^a-z0-9]/gi,'').length>4&&(kept[0].length+w2.length)<16)kept.push(w2);
+  return kept.map(titleWord).join(' ');
 }
 
 function isAlwaysReview(desc){const dl=desc.toLowerCase();return ALWAYS_REVIEW.some(k=>dl.includes(k));}
