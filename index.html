@@ -234,6 +234,20 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
   .review-banner .review-banner-sub,.review-banner .review-banner-btn,.review-banner .review-banner-x{display:none}
   .review-banner .review-banner-icon{width:38px;height:38px;font-size:19px}
   .review-banner .review-banner-title{font-size:14px}
+  /* greeting header replaces the desktop title (scoped to beat later base rules) */
+  h1{display:none}
+  #mainApp .mobile-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  /* transaction cards: icon tile + name over category subtitle; drop dot, chip, actions */
+  .txn-row .txn-tile{display:flex}
+  .txn-dot{display:none}
+  .txn-row .txn-actions{display:none}
+  .txn-name .txn-name-cat{display:block}
+  .txn-row .txn-cat{display:none}
+  .txn-row{padding:10px 12px}
+  /* collapse filters behind a toggle */
+  #mainApp .filters-toggle{display:flex}
+  #screen-dashboard .controls{display:none}
+  #screen-dashboard .controls.open{display:flex;flex-direction:column}
 }
 /* Data-forward polish */
 .overview-label,.section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);margin:0 0 10px}
@@ -328,6 +342,16 @@ body.dark-mode .review-banner{background:var(--warn-soft)}
 .txn-amt.neg{color:var(--text)}
 .btn-icon{border:none;color:#C7C9DA;font-size:14px}
 .btn-icon:hover{color:var(--text)}
+/* Mobile polish: greeting header, category tiles, filters toggle */
+.mobile-header{display:none}
+.mh-logo{width:38px;height:38px;border-radius:11px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;flex:none}
+.mh-text{flex:1;min-width:0}
+.mh-hi{font-family:var(--font-display);font-weight:800;font-size:17px;letter-spacing:-.02em;line-height:1.1}
+.mh-sub{font-size:11px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mh-avatar{width:38px;height:38px;border-radius:11px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none}
+.txn-tile{display:none;width:36px;height:36px;flex:none;border-radius:10px;align-items:center;justify-content:center;font-size:16px}
+.txn-name-cat{display:none;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.filters-toggle{display:none;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text3);border-radius:var(--radius-ctl);padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -379,6 +403,11 @@ body.dark-mode .review-banner{background:var(--warn-soft)}
 
 <div class="app" id="mainApp" style="display:none">
   <h1 style="margin-bottom:18px">Transaction Bucketer</h1>
+  <div class="mobile-header" id="mobileHeader">
+    <span class="mh-logo"><i class="ph ph-coins"></i></span>
+    <div class="mh-text"><div class="mh-hi" id="mhHi">Hi</div><div class="mh-sub" id="mhSub"></div></div>
+    <span class="mh-avatar" id="mhAvatar">·</span>
+  </div>
   <div class="mobile-backdrop" id="mobileBackdrop" onclick="closeMobileNav()"></div>
   <nav class="mobile-tabbar">
     <button class="mtab active" id="mtab-dashboard" onclick="showTab('dashboard')"><i class="ph ph-squares-four"></i><span>Home</span></button>
@@ -537,6 +566,7 @@ body.dark-mode .review-banner{background:var(--warn-soft)}
       </div>
       <div>
         <div class="overview-label">Transactions</div>
+        <button class="filters-toggle" onclick="toggleFilters()"><i class="ph ph-sliders-horizontal"></i> Filters &amp; search</button>
         <div class="controls">
           <input type="text" id="searchBox" placeholder="Search transactions…">
           <select id="catFilter"><option value="all">All categories</option></select>
@@ -2035,6 +2065,7 @@ function getCanon(desc){
 // Human-friendly display name derived from the raw bank string.
 // Pure display transform — never mutates the stored desc.
 const NAME_NOISE=new Set(['purchase','pending','pos','ach','tfr','xfer','pymt','pymnt','pmt','agnt','payment','recur','recurring','debit','credit','llc','inc']);
+const CAT_ICON={home:'ph-house',groceries:'ph-shopping-cart',fastfood:'ph-hamburger',restaurant:'ph-fork-knife',food_work:'ph-coffee',auto:'ph-car',ram:'ph-wrench',kids:'ph-baby',tj_soccer:'ph-soccer-ball',shopping:'ph-shopping-bag',utilities:'ph-lightning',debt:'ph-scales',entertainment:'ph-popcorn',personal:'ph-first-aid-kit',subscriptions:'ph-repeat',pets:'ph-paw-print',business:'ph-briefcase',taxes:'ph-bank',cash:'ph-money',fees:'ph-warning-circle',transfers:'ph-arrows-left-right',income:'ph-trend-up',other:'ph-tag'};
 function titleWord(w){
   // keep short all-caps acronyms as-is (AMK, YMCA, TJ, CVS)
   if(/[A-Z]/.test(w)&&/^[A-Z0-9&.'-]{2,4}$/.test(w))return w;
@@ -2447,6 +2478,7 @@ function renderDashboard(){
   const ovR=document.getElementById('ovRate');if(ovR){ovR.textContent=rate.toFixed(0)+'%';ovR.className='metric-value '+(rate>=0?'pos':'neg');}
   const ovF=document.getElementById('ovDebtFree');
   if(ovF){const dbts=debtState.debts.filter(d=>(+d.balance||0)>0);if(dbts.length){const sim=simulatePayoff(dbts,debtState.strategy,debtState.extra);ovF.textContent=sim.finished?monthsToDate(sim.months):'120+ mo';}else ovF.textContent='—';}
+  renderMobileHeader();
   const nr=allTxns.filter(t=>t.needsReview).length;
   const nrEl=document.getElementById('unreviewedNote');
   if(nrEl)nrEl.style.display='none';
@@ -2487,9 +2519,11 @@ function renderDashboard(){
     <div class="txn-row${t.needsReview?' needs-review':''}">
       <span class="txn-date">${t.date}</span>
       <div class="txn-dot" style="background:${col}"></div>
+      <span class="txn-tile" style="background:color-mix(in srgb, ${col} 15%, var(--surface));color:${col}"><i class="ph ${CAT_ICON[t.cat]||'ph-tag'}"></i></span>
       <span class="txn-name">
         <span class="txn-name-primary" title="${rawEsc}">${cleanName(t.desc)}${t.needsReview?`<span class="review-flag" onclick="reviewThisTxn('${t.id}')">review</span>`:''}</span>
         <span class="txn-name-raw">${rawEsc}</span>
+        <span class="txn-name-cat">${catMap[t.cat]?.label||t.cat}</span>
       </span>
       <select class="txn-cat" style="background:color-mix(in srgb, ${col} 14%, var(--surface));color:${col}" onchange="changeTxnCat('${t.id}',this.value)">${CATS.map(c=>`<option value="${c.id}"${c.id===t.cat?' selected':''}>${c.label}</option>`).join('')}</select>
       <span class="txn-amt ${t.amount<0?'neg':'pos'}">${t.amount<0?'-':'+'}${fmt(t.amount)}</span>
@@ -2503,6 +2537,17 @@ function renderDashboard(){
   document.getElementById('prevBtn').disabled=page===0;
   document.getElementById('nextBtn').disabled=page>=totalPages-1;
 }
+
+function renderMobileHeader(){
+  const name=localStorage.getItem('displayName')||'';
+  const hi=document.getElementById('mhHi'); if(hi)hi.textContent=name?('Hi, '+name):'Welcome';
+  const ws=(typeof workspaces!=='undefined'?workspaces:[]).find(w=>w.id===currentWorkspaceId);
+  const monthTxt=document.querySelector('#monthSel option:checked')?.textContent||'All months';
+  const sub=document.getElementById('mhSub'); if(sub)sub.textContent=(ws?ws.name+' · ':'')+monthTxt;
+  const av=document.getElementById('mhAvatar');
+  if(av){const init=name.split(/\s+/).filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase();av.textContent=init||'·';}
+}
+function toggleFilters(){document.querySelector('#screen-dashboard .controls')?.classList.toggle('open');}
 
 function reviewThisTxn(id){
   const t=allTxns.find(x=>x.id===id);
