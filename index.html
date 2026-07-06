@@ -7,11 +7,26 @@
 <title>Transaction Bucketer</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0f0f14;--surface:#1a1a24;--surface2:#22222f;--border:#2e2e3e;--text:#e8e8f0;--text2:#888899;--accent:#66c2fa;--pos:#34d399;--neg:#f87171;--warn:#fbbf24;--radius:10px;--font:'Inter',system-ui,sans-serif}
-body.light-mode{--bg:#f4f5f7;--surface:#ffffff;--surface2:#f0f1f4;--border:#dde0e8;--text:#1a1a2e;--text2:#6b7280;--accent:#2563eb;--pos:#16a34a;--neg:#dc2626;--warn:#d97706}
-body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;min-height:100vh}
+:root{
+  /* structural tokens (shared across themes) */
+  --radius:18px;--radius-ctl:12px;
+  --font:'Plus Jakarta Sans','Inter',system-ui,sans-serif;
+  --font-display:'Bricolage Grotesque','Plus Jakarta Sans',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  /* FRESH — default (light) theme */
+  --bg:#F4F5FB;--surface:#FFFFFF;--surface2:#F4F4FA;--border:#ECEDF5;--text:#1A1B2E;--text2:#8A8DA6;--text3:#55586F;--accent:#5B4CE0;--accent-soft:#EEECFC;--accent-border:#E0DCFA;--pos:#12B76A;--neg:#E5484D;--warn:#E0912B;--warn-soft:#FFF7EA;--warn-border:#F6E2BE;--warn-text:#8A5A12;--shadow-card:0 10px 26px -20px rgba(26,27,46,.30)
+}
+body.dark-mode{
+  /* classic dark theme (toggle off) */
+  --bg:#0f0f14;--surface:#1a1a24;--surface2:#22222f;--border:#2e2e3e;--text:#e8e8f0;--text2:#888899;--text3:#a6a6bd;--accent:#66c2fa;--accent-soft:#16273a;--accent-border:#2a4a63;--pos:#34d399;--neg:#f87171;--warn:#fbbf24;--warn-soft:#2a2410;--warn-border:#5a4a1e;--warn-text:#fbbf24;--shadow-card:0 10px 26px -18px rgba(0,0,0,.55)
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
 .app{max-width:1100px;margin:0 auto;padding:24px 20px}
 h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .subtitle{font-size:13px;color:var(--text2);margin-bottom:24px}
@@ -225,6 +240,43 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .budget-cat-name{display:flex;align-items:center;gap:8px}
 .budget-row input{width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:12px;outline:none;text-align:right}
 .budget-row-metrics{text-align:right;font-size:12px}
+/* ===== FRESH reskin ===== */
+.app{max-width:1300px}
+h1{font-family:var(--font-display);font-weight:800;letter-spacing:-.02em}
+.layout{gap:28px}
+.sidebar{flex:0 0 248px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;box-shadow:var(--shadow-card)}
+.nav-group:not(:first-child){border-top:1px solid var(--border)}
+.nav-group-label{font-size:10px;letter-spacing:.12em;font-weight:700;color:var(--text2)}
+.nav-item{padding:10px 12px;border-radius:11px;color:var(--text3);font-size:13px;font-weight:500;gap:11px}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent);color:#fff;font-weight:700;box-shadow:0 8px 18px -8px var(--accent)}
+.nav-item.active .badge{background:rgba(255,255,255,.25);color:#fff}
+.badge{border-radius:10px;font-size:10.5px;font-weight:700;height:19px;min-width:20px}
+.badge.warn{background:#FBEAD0;color:#B4791C}
+.badge.info{background:var(--surface2);color:var(--text2)}
+.btn,.btn-sm{border-radius:var(--radius-ctl)}
+.btn-primary{color:#fff;font-weight:700}
+.btn-primary:hover{background:var(--accent);filter:brightness(1.07)}
+.btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--text3)}
+.btn-secondary:hover{border-color:var(--text2);filter:none}
+.workspace-new-row button{color:#fff}
+.workspace-new-row button:hover{background:var(--accent);filter:brightness(1.07)}
+.section-label,.overview-label{font-size:11.5px;letter-spacing:.09em;font-weight:700;color:var(--text2)}
+.metric{border:none;box-shadow:var(--shadow-card)}
+.metric-hero{background:var(--surface)}
+.metric-value{font-family:var(--font-display);font-weight:700;letter-spacing:-.02em}
+.metric-value.pos{color:var(--pos)}.metric-value.neg{color:var(--neg)}
+.review-card,.txn-card,.modal-box,.budget-screen-top,.sync-bar,.rule-row{box-shadow:var(--shadow-card)}
+.controls input,.controls select{border-radius:var(--radius-ctl)}
+.txn-row{border:1px solid var(--border);border-radius:var(--radius-ctl)}
+.txn-row.needs-review{background:var(--warn-soft);border-color:var(--warn-border)}
+.review-flag{background:#FBEAD0;color:#B4791C;text-transform:uppercase;font-size:9.5px;font-weight:700;letter-spacing:.04em;padding:1px 6px;border-radius:5px}
+.review-flag:hover{background:#F6E2BE}
+.txn-amt.pos{color:var(--pos)}.txn-amt.neg{color:var(--neg)}
+.page-row button{border-radius:var(--radius-ctl)}
+.btn-import-r:hover{background:var(--surface2)}
+.auth-btn{color:#fff}.auth-btn:hover{filter:brightness(1.07);background:var(--accent)}
+.unreviewed-note{color:var(--warn)}
 </style>
 </head>
 <body>
@@ -2858,13 +2910,13 @@ async function openAccountSettings(){
 
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:20px">
         <div>
-          <div style="font-size:13px;font-weight:500">Light mode</div>
-          <div style="font-size:12px;color:var(--text2)">Switch to a light color scheme</div>
+          <div style="font-size:13px;font-weight:500">Dark mode</div>
+          <div style="font-size:12px;color:var(--text2)">Switch to the classic dark theme</div>
         </div>
         <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
-          <input type="checkbox" id="lightModeToggle" ${localStorage.getItem('lightMode')==='1'?'checked':''} onchange="applyLightMode(this.checked)" style="opacity:0;width:0;height:0">
-          <span style="position:absolute;inset:0;background:var(--border);border-radius:24px;transition:.2s"></span>
-          <span id="lightModeThumb" style="position:absolute;left:${localStorage.getItem('lightMode')==='1'?'22':'2'}px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></span>
+          <input type="checkbox" id="lightModeToggle" ${localStorage.getItem('darkMode')==='1'?'checked':''} onchange="applyDarkMode(this.checked)" style="opacity:0;width:0;height:0">
+          <span style="position:absolute;inset:0;background:${localStorage.getItem('darkMode')==='1'?'var(--accent)':'var(--border)'};border-radius:24px;transition:.2s"></span>
+          <span id="lightModeThumb" style="position:absolute;left:${localStorage.getItem('darkMode')==='1'?'22':'2'}px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></span>
         </label>
       </div>
 
@@ -2923,16 +2975,16 @@ function confirmSignOut(){
   signOut();
 }
 
-function applyLightMode(on){
-  localStorage.setItem('lightMode', on?'1':'0');
-  document.body.classList.toggle('light-mode', on);
+function applyDarkMode(on){
+  localStorage.setItem('darkMode', on?'1':'0');
+  document.body.classList.toggle('dark-mode', on);
   const thumb=document.getElementById('lightModeThumb');
   const track=thumb?.previousElementSibling;
   if(thumb)thumb.style.left=on?'22px':'2px';
   if(track)track.style.background=on?'var(--accent)':'var(--border)';
 }
-// Apply on load
-if(localStorage.getItem('lightMode')==='1')document.body.classList.add('light-mode');
+// Apply on load — Fresh (light) is the default; dark is opt-in.
+if(localStorage.getItem('darkMode')==='1')document.body.classList.add('dark-mode');
 
 function updateGreeting(){
   const name=localStorage.getItem('displayName');
