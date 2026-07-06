@@ -206,12 +206,29 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .ws-msg{font-size:11px;margin-top:4px;min-height:14px}
 .workspace-new-row button{padding:7px 12px;border:none;border-radius:8px;background:var(--accent);color:#000;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
 .workspace-new-row button:hover{background:#89d4ff}
+/* Mobile bottom tab bar + slide-in nav drawer */
+.mobile-tabbar{display:none}
+.mobile-backdrop{display:none}
+.mtab{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--text2);font-size:10px;font-weight:600;cursor:pointer;flex:1;font-family:inherit}
+.mtab i{font-size:21px}
+.mtab.active{color:var(--accent)}
+.mtab-fab{width:54px;height:54px;border-radius:17px;background:var(--accent);color:#fff;border:none;display:flex;align-items:center;justify-content:center;margin-top:-22px;box-shadow:0 12px 24px -8px var(--accent);cursor:pointer;flex:none}
+.mtab-fab i{font-size:24px}
 @media(max-width:760px){
-  .layout{flex-direction:column;gap:14px}
-  .sidebar{position:static;flex-direction:row;flex-wrap:wrap;gap:6px;width:100%}
-  .nav-group{display:contents}
-  .nav-group-label{display:none}
-  .nav-item{width:auto;border:1px solid var(--border)}
+  .app{padding-bottom:92px}
+  .layout{flex-direction:column;gap:16px}
+  .content{width:100%;min-width:0}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;width:274px;max-width:82vw;transform:translateX(-100%);transition:transform .22s ease;z-index:1100;border-radius:0;overflow:auto}
+  .sidebar.open{transform:none;box-shadow:0 20px 60px rgba(20,18,37,.4)}
+  .mobile-backdrop{display:block;position:fixed;inset:0;background:rgba(20,18,37,.45);z-index:1050;opacity:0;pointer-events:none;transition:opacity .2s}
+  .mobile-backdrop.show{opacity:1;pointer-events:auto}
+  .mobile-tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:1000;background:var(--surface);border-top:1px solid var(--border);align-items:flex-end;justify-content:space-around;padding:8px 12px 16px;gap:4px}
+  .metrics{grid-template-columns:1fr 1fr}
+  .dash-layout{grid-template-columns:1fr}
+  .chart-wrap{height:170px}
+  .txn-date,.txn-name-raw{display:none}
+  .txn-cat{max-width:120px}
+  h1{font-size:18px}
 }
 /* Data-forward polish */
 .overview-label,.section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);margin:0 0 10px}
@@ -354,6 +371,14 @@ body.dark-mode .review-banner{background:var(--warn-soft)}
 
 <div class="app" id="mainApp" style="display:none">
   <h1 style="margin-bottom:18px">Transaction Bucketer</h1>
+  <div class="mobile-backdrop" id="mobileBackdrop" onclick="closeMobileNav()"></div>
+  <nav class="mobile-tabbar">
+    <button class="mtab active" id="mtab-dashboard" onclick="showTab('dashboard')"><i class="ph ph-squares-four"></i><span>Home</span></button>
+    <button class="mtab" id="mtab-txnreview" onclick="showTab('txnreview')"><i class="ph ph-list-bullets"></i><span>Activity</span></button>
+    <button class="mtab-fab" onclick="showTab('import')" title="Import"><i class="ph ph-upload-simple"></i></button>
+    <button class="mtab" id="mtab-budget" onclick="showTab('budget')"><i class="ph ph-wallet"></i><span>Plan</span></button>
+    <button class="mtab" onclick="openMobileNav()"><i class="ph ph-dots-three-outline"></i><span>More</span></button>
+  </nav>
   <div class="layout">
     <nav class="sidebar">
       <div class="brand-mark"><span class="brand-tile"><i class="ph ph-coins"></i></span><span class="brand-word">Bucketer</span></div>
@@ -2797,6 +2822,16 @@ function showTab(tab){
   if(tab==='rules'){renderRules();renderBotConfig();renderSpecialRules();}
   if(tab==='review')renderMerchantReview();
   if(tab==='txnreview')renderTxnReview();
+  syncMobileNav(tab);
+}
+
+// Mobile: bottom tab bar + slide-in nav drawer
+function openMobileNav(){document.querySelector('.sidebar')?.classList.add('open');document.getElementById('mobileBackdrop')?.classList.add('show');}
+function closeMobileNav(){document.querySelector('.sidebar')?.classList.remove('open');document.getElementById('mobileBackdrop')?.classList.remove('show');}
+function syncMobileNav(tab){
+  closeMobileNav();
+  document.querySelectorAll('.mtab').forEach(b=>b.classList.remove('active'));
+  const b=document.getElementById('mtab-'+tab);if(b)b.classList.add('active');
 }
 
 function renderCurrentTab(){
