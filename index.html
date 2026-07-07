@@ -127,11 +127,8 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .txn-row.needs-review{border-color:#854f0b;background:#1a1200}
 .txn-date{font-size:11px;color:var(--text2);min-width:46px;flex-shrink:0}
 .txn-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.txn-desc{font-size:12px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .review-flag{font-size:10px;background:#451a00;color:#fbbf24;padding:1px 5px;border-radius:4px;flex-shrink:0;cursor:pointer}
 .review-flag:hover{background:#6b3a00}
-.txn-note{font-size:11px;padding:3px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);width:82px;flex-shrink:0;outline:none}
-.txn-note:focus{border-color:var(--accent)}
 .txn-cat{font-size:11px;padding:3px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);max-width:130px;flex-shrink:0;outline:none}
 .txn-cat:focus{border-color:var(--accent)}
 .txn-cat option{background:var(--surface2)}
@@ -157,7 +154,6 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .page-row{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:12px;color:var(--text2)}
 .page-row button{padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:11px}
 .page-row button:disabled{opacity:.35;cursor:default}
-.unreviewed-note{font-size:12px;color:var(--warn);cursor:pointer;text-decoration:underline}
 .rule-row{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:8px;border:1px solid var(--border);margin-bottom:4px;background:var(--surface)}
 .rule-merchant{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rule-arrow{color:var(--text2);font-size:12px}
@@ -312,7 +308,6 @@ h1{font-family:var(--font-display);font-weight:800;letter-spacing:-.02em}
 .page-row button{border-radius:var(--radius-ctl)}
 .btn-import-r:hover{background:var(--surface2)}
 .auth-btn{color:#fff}.auth-btn:hover{filter:brightness(1.07);background:var(--accent)}
-.unreviewed-note{color:var(--warn)}
 /* ===== Fresh 1b — dashboard chrome ===== */
 .brand-mark{display:flex;align-items:center;gap:11px;padding:2px 6px 16px}
 .brand-tile{width:34px;height:34px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px;flex:none}
@@ -528,7 +523,6 @@ body.dark-mode .review-banner{background:var(--warn-soft)}
     <div class="dash-top">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <select id="monthSel"></select>
-        <div class="unreviewed-note" id="unreviewedNote" style="display:none" onclick="showTab('txnreview')"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="btn-sm btn-export" onclick="exportCSV()" title="Export to spreadsheet"><i class="ph ph-download-simple"></i> CSV</button>
@@ -2480,8 +2474,6 @@ function renderDashboard(){
   if(ovF){const dbts=debtState.debts.filter(d=>(+d.balance||0)>0);if(dbts.length){const sim=simulatePayoff(dbts,debtState.strategy,debtState.extra);ovF.textContent=sim.finished?monthsToDate(sim.months):'120+ mo';}else ovF.textContent='—';}
   renderMobileHeader();
   const nr=allTxns.filter(t=>t.needsReview).length;
-  const nrEl=document.getElementById('unreviewedNote');
-  if(nrEl)nrEl.style.display='none';
   const bn=document.getElementById('reviewBanner');
   if(bn){
     if(nr>0){bn.style.display='flex';const bt=document.getElementById('reviewBannerTitle');if(bt)bt.textContent=`${nr} transaction${nr===1?'':'s'} still need${nr===1?'s':''} review`;}
@@ -2557,11 +2549,6 @@ function reviewThisTxn(id){
 
 function setActiveCat(cat){activeCat=cat;page=0;renderDashboard();}
 function changePage(d){page+=d;renderDashboard();}
-async function setNote(id,note){
-  const t=allTxns.find(t=>t.id===id);if(!t)return;
-  t.note=note;
-  await upsertTxns([t]);
-}
 
 async function changeTxnCat(id,newCat){
   const catMap=getCatMap();
