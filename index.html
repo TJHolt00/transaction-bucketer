@@ -353,6 +353,11 @@ body.dark-mode .review-banner{background:var(--warn-soft)}
 .ws-manage-name{flex:1;min-width:0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ws-manage-del{flex:none;background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px;padding:2px 5px;border-radius:6px}
 .ws-manage-del:hover{color:var(--neg)}
+.app-toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:2000;max-width:420px;width:calc(100% - 32px);padding:12px 16px;border-radius:12px;background:var(--surface);color:var(--text);border:1px solid var(--border);box-shadow:0 16px 40px -12px rgba(20,18,37,.4);font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;text-align:center}
+.app-toast.show{opacity:1;transform:translate(-50%,0)}
+.app-toast.ok{border-color:var(--pos);color:var(--pos)}
+.app-toast.warn{border-color:var(--warn);color:var(--warn-text)}
+@media(max-width:760px){.app-toast{bottom:92px}}
 </style>
 </head>
 <body>
@@ -1030,43 +1035,88 @@ async function switchWorkspace(id){
   await initApp();
 }
 
-async function deleteWorkspace(targetId){
+function deleteWorkspace(targetId){
   if(!workspacesEnabled)return;
   const id=targetId||currentWorkspaceId;
   if(!id)return;
-  if(workspaces.length<=1){alert("This is your only workspace, so it can't be deleted.\n\nCreate another workspace first, or use Import → ✕ Clear data to empty this one.");return;}
+  if(workspaces.length<=1){showToast("This is your only workspace — create another first, or use Import → ✕ Clear data to empty this one.",'warn');return;}
   const ws=workspaces.find(w=>w.id===id);
   const name=ws?ws.name:'this workspace';
-  if(!confirm(`Delete the workspace “${name}”?\n\nThis permanently deletes ALL of its transactions, rules, budgets, debts, and settings. This cannot be undone.`))return;
-  const typed=prompt(`To confirm, type the workspace name exactly:\n\n${name}`);
-  if(typed===null)return;
-  if(typed.trim()!==name){alert('That did not match the workspace name — nothing was deleted.');return;}
+  openDeleteWorkspaceModal(id,name);
+}
+
+// In-app confirm dialog (avoids native confirm()/prompt(), which browsers offer
+// to permanently suppress after repeated use).
+function openDeleteWorkspaceModal(id,name){
+  const esc=s=>String(s).replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const ov=document.createElement('div');
+  ov.className='modal-overlay';
+  ov.innerHTML=`
+    <div class="modal-box">
+      <div class="modal-title">Delete workspace</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">This permanently deletes <b style="color:var(--text)">${esc(name)}</b> and ALL of its transactions, rules, budgets, debts, and settings. This cannot be undone.</p>
+      <div class="modal-field">
+        <label>Type the workspace name to confirm</label>
+        <input type="text" id="delWsInput" placeholder="${esc(name)}" autocomplete="off" autocapitalize="off">
+      </div>
+      <div class="modal-btns">
+        <button class="btn btn-secondary" id="delWsCancel">Cancel</button>
+        <button class="btn" id="delWsGo" style="background:var(--neg);color:#fff;border:none;opacity:.5;pointer-events:none">Delete workspace</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  const input=ov.querySelector('#delWsInput');
+  const go=ov.querySelector('#delWsGo');
+  const close=()=>ov.remove();
+  const sync=()=>{const ok=input.value.trim()===name;go.style.opacity=ok?'1':'.5';go.style.pointerEvents=ok?'auto':'none';};
+  input.addEventListener('input',sync);
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'&&input.value.trim()===name)go.click();if(e.key==='Escape')close();});
+  ov.addEventListener('click',e=>{if(e.target===ov)close();});
+  ov.querySelector('#delWsCancel').onclick=close;
+  go.onclick=async()=>{
+    if(input.value.trim()!==name)return;
+    go.textContent='Deleting…';go.style.pointerEvents='none';
+    await performWorkspaceDelete(id,name);
+    close();
+  };
+  input.focus();
+}
+
+async function performWorkspaceDelete(id,name){
   // Delete the workspace's data first (these tables let a member delete their rows).
   for(const tbl of ['transactions','merchant_rules','app_settings']){
     const{error}=await db.from(tbl).delete().eq('workspace_id',id);
-    if(error){alert(`Could not delete "${name}" ${tbl}: ${error.message}`);return;}
+    if(error){showToast(`Could not delete "${name}" ${tbl}: ${error.message}`,'warn');return;}
   }
-  // Delete the workspace row (members are still present, so a membership-based policy passes;
-  // a cascade FK will clear the members automatically).
+  // Delete the workspace row (members still present so a membership-based policy passes;
+  // a cascade FK clears the members automatically).
   const{error:wErr}=await db.from('workspaces').delete().eq('id',id);
   if(wErr){
-    alert('The data was cleared, but the workspace itself could not be removed automatically:\n\n'+wErr.message+'\n\nThis needs a one-time database permission — ask me for the "delete workspace" SQL.');
+    showToast('Data cleared, but the workspace itself needs a one-time DB permission to remove (run Section A of the delete_workspace SQL). '+wErr.message,'warn');
   }else{
-    // Clean up members in case the foreign key was not set to cascade.
     await db.from('workspace_members').delete().eq('workspace_id',id);
   }
   workspaces=workspaces.filter(w=>w.id!==id);
   if(id===currentWorkspaceId){
-    // Deleted the active workspace — switch to a remaining one and reload.
     const next=workspaces[0];
     if(next){currentWorkspaceId=next.id;localStorage.setItem(LS_WORKSPACE,next.id);}
     else{currentWorkspaceId=null;localStorage.removeItem(LS_WORKSPACE);}
     window.location.reload();
   }else{
-    // Deleted a different workspace — just refresh the lists, no reload needed.
     renderWorkspaceSwitcher();
     renderManageWorkspaces();
+    showToast(`Deleted “${name}”.`,'ok');
   }
+}
+
+// Lightweight non-blocking toast (replaces alert() so the browser can't suppress it).
+function showToast(msg,kind){
+  let el=document.getElementById('appToast');
+  if(!el){el=document.createElement('div');el.id='appToast';document.body.appendChild(el);}
+  el.className='app-toast '+(kind||'')+' show';
+  el.textContent=msg;
+  clearTimeout(showToast._t);
+  showToast._t=setTimeout(()=>{el.classList.remove('show');},kind==='warn'?6000:3000);
 }
 
 function renderManageWorkspaces(){
