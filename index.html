@@ -140,7 +140,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:4px}
 .btn-icon:hover{border-color:var(--text);color:var(--text)}
 .btn-icon.del:hover{border-color:var(--neg);color:var(--neg)}
 /* Modal */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1200}
 .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 24px;width:100%;max-width:420px;margin:16px}
 .modal-title{font-size:16px;font-weight:600;margin-bottom:20px}
 .modal-field{margin-bottom:14px}
@@ -1048,6 +1048,7 @@ function deleteWorkspace(targetId){
 // In-app confirm dialog (avoids native confirm()/prompt(), which browsers offer
 // to permanently suppress after repeated use).
 function openDeleteWorkspaceModal(id,name){
+  if(typeof closeMobileNav==='function')closeMobileNav(); // on phones, slide the nav drawer away so the dialog is visible
   const esc=s=>String(s).replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const ov=document.createElement('div');
   ov.className='modal-overlay';
