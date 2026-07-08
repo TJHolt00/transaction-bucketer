@@ -347,6 +347,8 @@ body.dark-mode .review-banner{background:var(--warn-soft)}
 .txn-tile{display:none;width:36px;height:36px;flex:none;border-radius:10px;align-items:center;justify-content:center;font-size:16px}
 .txn-name-cat{display:none;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .filters-toggle{display:none;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text3);border-radius:var(--radius-ctl);padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:10px}
+.ws-delete-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:12px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-ctl);background:none;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.ws-delete-btn:hover{border-color:var(--neg);color:var(--neg)}
 </style>
 </head>
 <body>
@@ -433,6 +435,7 @@ body.dark-mode .review-banner{background:var(--warn-soft)}
           </div>
           <div class="ws-msg" id="wsMemberMsg"></div>
         </div>
+        <button class="ws-delete-btn" onclick="deleteWorkspace()"><i class="ph ph-trash"></i> Delete this workspace</button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label">Overview</div>
@@ -1020,6 +1023,38 @@ async function switchWorkspace(id){
   localStorage.setItem(LS_WORKSPACE,id);
   renderWorkspaceSwitcher();
   await initApp();
+}
+
+async function deleteWorkspace(){
+  if(!workspacesEnabled||!currentWorkspaceId)return;
+  if(workspaces.length<=1){alert("This is your only workspace, so it can't be deleted.\n\nCreate another workspace first, or use Import → ✕ Clear data to empty this one.");return;}
+  const ws=workspaces.find(w=>w.id===currentWorkspaceId);
+  const name=ws?ws.name:'this workspace';
+  if(!confirm(`Delete the workspace “${name}”?\n\nThis permanently deletes ALL of its transactions, rules, budgets, debts, and settings. This cannot be undone.`))return;
+  const typed=prompt(`To confirm, type the workspace name exactly:\n\n${name}`);
+  if(typed===null)return;
+  if(typed.trim()!==name){alert('That did not match the workspace name — nothing was deleted.');return;}
+  const id=currentWorkspaceId;
+  // Delete the workspace's data first (these tables let a member delete their rows).
+  for(const tbl of ['transactions','merchant_rules','app_settings']){
+    const{error}=await db.from(tbl).delete().eq('workspace_id',id);
+    if(error){alert(`Could not delete this workspace's ${tbl}: ${error.message}`);return;}
+  }
+  // Delete the workspace row (members are still present, so a membership-based policy passes;
+  // a cascade FK will clear the members automatically).
+  const{error:wErr}=await db.from('workspaces').delete().eq('id',id);
+  if(wErr){
+    alert('The data was cleared, but the workspace itself could not be removed automatically:\n\n'+wErr.message+'\n\nThis needs a one-time database permission — ask me for the "delete workspace" SQL.');
+  }else{
+    // Clean up members in case the foreign key was not set to cascade.
+    await db.from('workspace_members').delete().eq('workspace_id',id);
+  }
+  // Move to a remaining workspace and reload.
+  workspaces=workspaces.filter(w=>w.id!==id);
+  const next=workspaces[0];
+  if(next){currentWorkspaceId=next.id;localStorage.setItem(LS_WORKSPACE,next.id);}
+  else{currentWorkspaceId=null;localStorage.removeItem(LS_WORKSPACE);}
+  window.location.reload();
 }
 
 function toggleNewWorkspace(){
