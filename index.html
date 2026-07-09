@@ -1120,6 +1120,63 @@ function showToast(msg,kind){
   showToast._t=setTimeout(()=>{el.classList.remove('show');},kind==='warn'?6000:3000);
 }
 
+// In-app confirm (replaces native confirm(), which browsers can suppress). Returns a Promise<boolean>.
+function confirmDialog(message,opts={}){
+  return new Promise(resolve=>{
+    if(typeof closeMobileNav==='function')closeMobileNav();
+    const esc=s=>String(s).replace(/</g,'&lt;');
+    const danger=opts.danger!==false;
+    const ov=document.createElement('div');
+    ov.className='modal-overlay';
+    ov.innerHTML=`
+      <div class="modal-box">
+        ${opts.title?`<div class="modal-title">${esc(opts.title)}</div>`:''}
+        <p style="font-size:13.5px;color:var(--text);line-height:1.5;white-space:pre-line;margin-bottom:22px">${esc(message)}</p>
+        <div class="modal-btns">
+          <button class="btn btn-secondary" data-act="cancel">${esc(opts.cancelLabel||'Cancel')}</button>
+          <button class="btn" data-act="ok" style="background:${danger?'var(--neg)':'var(--accent)'};color:#fff;border:none">${esc(opts.confirmLabel||'OK')}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const done=v=>{ov.remove();document.removeEventListener('keydown',onKey);resolve(v);};
+    function onKey(e){if(e.key==='Escape')done(false);if(e.key==='Enter')done(true);}
+    ov.querySelector('[data-act="cancel"]').onclick=()=>done(false);
+    ov.querySelector('[data-act="ok"]').onclick=()=>done(true);
+    ov.addEventListener('click',e=>{if(e.target===ov)done(false);});
+    document.addEventListener('keydown',onKey);
+    ov.querySelector('[data-act="ok"]').focus();
+  });
+}
+
+// In-app prompt (replaces native prompt()). Returns a Promise<string|null>.
+function promptDialog(message,defaultValue=''){
+  return new Promise(resolve=>{
+    if(typeof closeMobileNav==='function')closeMobileNav();
+    const esc=s=>String(s).replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    const ov=document.createElement('div');
+    ov.className='modal-overlay';
+    ov.innerHTML=`
+      <div class="modal-box">
+        <div class="modal-field" style="margin-bottom:22px">
+          <label>${esc(message)}</label>
+          <input type="text" id="promptDlgInput" value="${esc(defaultValue)}" autocomplete="off">
+        </div>
+        <div class="modal-btns">
+          <button class="btn btn-secondary" data-act="cancel">Cancel</button>
+          <button class="btn btn-primary" data-act="ok">OK</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const input=ov.querySelector('#promptDlgInput');
+    const done=v=>{ov.remove();resolve(v);};
+    ov.querySelector('[data-act="cancel"]').onclick=()=>done(null);
+    ov.querySelector('[data-act="ok"]').onclick=()=>done(input.value);
+    input.addEventListener('keydown',e=>{if(e.key==='Enter')done(input.value);if(e.key==='Escape')done(null);});
+    ov.addEventListener('click',e=>{if(e.target===ov)done(null);});
+    input.focus();input.select();
+  });
+}
+
 function renderManageWorkspaces(){
   const box=document.getElementById('wsManageList');
   if(!box)return;
@@ -1159,7 +1216,7 @@ async function createWorkspaceInline(){
   const chosenRules=await promptCopyRulesModal(name, workspaces);
   // Create the workspace
   const{data,error}=await db.from('workspaces').insert({name}).select().single();
-  if(error){alert('Could not create workspace: '+error.message);return;}
+  if(error){showToast('Could not create workspace: '+error.message,'warn');return;}
   workspaces.push(data);
   currentWorkspaceId=data.id;
   localStorage.setItem(LS_WORKSPACE,currentWorkspaceId);
@@ -1252,11 +1309,11 @@ function promptCopyRulesModal(newName, allWorkspaces){
       btn.disabled=true;btn.textContent='Loading…';
       const{data:srcRules,error}=await db.from('merchant_rules').select('keyword,bucket').eq('workspace_id',src).neq('bucket','__ask_later__');
       btn.disabled=false;btn.textContent='Load rules';
-      if(error){alert('Could not load rules: '+error.message);return;}
+      if(error){showToast('Could not load rules: '+error.message,'warn');return;}
       loadedRules=(srcRules||[]).map(r=>({keyword:r.keyword,bucket:r.bucket,_sel:true}));
       document.getElementById('copyRulesPicker').style.display=loadedRules.length?'block':'none';
       document.getElementById('copyRulesConfirmRow').style.display='block';
-      if(!loadedRules.length){box().innerHTML='';alert('That workspace has no learned rules to copy.');return;}
+      if(!loadedRules.length){box().innerHTML='';showToast('That workspace has no learned rules to copy.','warn');return;}
       document.getElementById('copyRulesSelectAll').checked=true;
       renderPickList();updateCount();
     };
@@ -1844,11 +1901,11 @@ function populateBudgetPlans(){
 }
 
 async function promptNewBudgetPlan(){
-  const name=prompt('Enter a name for the new budget plan:',`Budget ${new Date().getFullYear()}`);
+  const name=await promptDialog('Enter a name for the new budget plan:',`Budget ${new Date().getFullYear()}`);
   if(!name) return;
   const safe=name.trim();
   if(!safe) return;
-  if(budgetTargets.plans[safe]){alert('A plan with that name already exists.');return;}
+  if(budgetTargets.plans[safe]){showToast('A plan with that name already exists.','warn');return;}
   budgetTargets.plans[safe]=createBudgetPlan(safe);
   budgetTargets.active=safe;
   await saveBudgetTargets();
@@ -1860,7 +1917,7 @@ async function createPlanInline(){
   const input=document.getElementById('newPlanName');
   const safe=(input.value||'').trim();
   if(!safe){input.focus();return;}
-  if(budgetTargets.plans[safe]){alert('A plan with that name already exists.');input.select();return;}
+  if(budgetTargets.plans[safe]){showToast('A plan with that name already exists.','warn');input.select();return;}
   budgetTargets.plans[safe]=createBudgetPlan(safe);
   budgetTargets.active=safe;
   await saveBudgetTargets();
@@ -1873,11 +1930,11 @@ async function createPlanInline(){
 
 async function promptRenameBudgetPlan(){
   const current=getActiveBudgetPlan();
-  const name=prompt('Enter a new name for this budget plan:',current);
+  const name=await promptDialog('Enter a new name for this budget plan:',current);
   if(!name) return;
   const safe=name.trim();
   if(!safe||safe===current) return;
-  if(budgetTargets.plans[safe]){alert('A plan with that name already exists.');return;}
+  if(budgetTargets.plans[safe]){showToast('A plan with that name already exists.','warn');return;}
   budgetTargets.plans[safe]=budgetTargets.plans[current];
   budgetTargets.plans[safe].__meta.name=safe;
   delete budgetTargets.plans[current];
@@ -1893,8 +1950,8 @@ async function deleteBudgetPlan(){
   const current=getActiveBudgetPlan();
   if(!current){return;}
   const planNames=getBudgetPlanNames();
-  if(planNames.length===1){alert('You must keep at least one budget plan.');return;}
-  if(!confirm(`Delete the budget plan “${current}”? This cannot be undone.`))return;
+  if(planNames.length===1){showToast('You must keep at least one budget plan.','warn');return;}
+  if(!await confirmDialog(`Delete the budget plan “${current}”? This cannot be undone.`,{title:'Delete plan',confirmLabel:'Delete'}))return;
   delete budgetTargets.plans[current];
   budgetTargets.active=planNames.find(p=>p!==current)||Object.keys(budgetTargets.plans)[0];
   await saveBudgetTargets();
@@ -1925,7 +1982,7 @@ function updateBudgetUI(){
 
 async function saveBudget(){
   const month=document.getElementById('monthSel').value;
-  if(month==='all'){alert('Select a month before setting a budget.');return;}
+  if(month==='all'){showToast('Select a month before setting a budget.','warn');return;}
   const raw=document.getElementById('budgetAmount').value.trim();
   const budget=getBudgetForMonth(month);
   if(raw===''){
@@ -1937,7 +1994,7 @@ async function saveBudget(){
     return;
   }
   const amt=parseFloat(raw);
-  if(isNaN(amt)||amt<0){alert('Enter a valid budget amount.');return;}
+  if(isNaN(amt)||amt<0){showToast('Enter a valid budget amount.','warn');return;}
   const plan=getActiveBudgetPlan();
   budgetTargets.plans[plan][month]={...budget,categories:budget.categories,total:amt};
   await saveBudgetTargets();
@@ -1993,7 +2050,7 @@ function renderBudgetScreen(){
 
 async function saveBudgetSettings(){
   const month=document.getElementById('budgetMonthSel').value;
-  if(month==='all'){alert('Select a month to set a budget.');return;}
+  if(month==='all'){showToast('Select a month to set a budget.','warn');return;}
   const total=parseFloat(document.getElementById('budgetTotalInput').value)||0;
   const savings=parseFloat(document.getElementById('savingsGoalInput').value)||0;
   const budget=getBudgetForMonth(month);
@@ -2009,7 +2066,7 @@ async function setBudgetCategoryTarget(month,cat,value){
   if(!month||month==='all')return;
   const budget=getBudgetForMonth(month);
   const num=value.trim()===''?0:parseFloat(value);
-  if(isNaN(num)||num<0){alert('Enter a valid category target.');return;}
+  if(isNaN(num)||num<0){showToast('Enter a valid category target.','warn');return;}
   const categories={...budget.categories};
   if(num===0){delete categories[cat];}
   else{categories[cat]=num;}
@@ -2386,9 +2443,9 @@ async function loadFile(text){
 }
 
 async function clearAllData(){
-  if(!confirm("Clear ALL saved transactions for the shared account? Your merchant rules will be kept.\n\nThis cannot be undone."))return;
+  if(!await confirmDialog("Clear ALL saved transactions for the shared account? Your merchant rules will be kept.\n\nThis cannot be undone.",{title:'Clear transactions',confirmLabel:'Clear all'}))return;
   const{error}=await wsFilter(db.from('transactions').delete()).gte('inserted_at','1900-01-01');
-  if(error){alert('Failed to clear: '+error.message);return;}
+  if(error){showToast('Failed to clear: '+error.message,'warn');return;}
   allTxns=[];
   window.location.reload();
 }
@@ -2672,7 +2729,7 @@ async function changeTxnCat(id,newCat){
   const txn=allTxns.find(t=>t.id===id);if(!txn)return;
   txn.cat=newCat;txn.needsReview=false;txn.txnReview=false;
   const mk=getMK(txn.desc);
-  if(confirm(`Save "${getCanon(txn.desc).substring(0,30)}" → ${catMap[newCat]?.label} as a permanent rule?\n\nOK = apply to ALL matching transactions\nCancel = just this one transaction`)){
+  if(await confirmDialog(`Save "${getCanon(txn.desc).substring(0,30)}" → ${catMap[newCat]?.label} as a rule for ALL matching transactions?`,{title:'Save as rule?',confirmLabel:'Apply to all',cancelLabel:'Just this one',danger:false})){
     await upsertRule(mk,newCat);
     const changed=allTxns.filter(t=>getMK(t.desc)===mk);
     changed.forEach(t=>{t.cat=newCat;t.needsReview=false;t.txnReview=false;});
@@ -2854,7 +2911,7 @@ function renderSpecialRules(){
 function toggleSpecialZelle(on){specialRules.zelleUnnamedAsTransfer=on;saveSpecialRules();}
 function addAlwaysAsk(){
   const m=document.getElementById('aaMatch').value.trim();
-  if(!m){alert('Enter some text to match.');return;}
+  if(!m){showToast('Enter some text to match.','warn');return;}
   const cat=document.getElementById('aaCat').value||'other';
   const note=document.getElementById('aaNote').value.trim();
   specialRules.alwaysAsk=specialRules.alwaysAsk||[];
@@ -2881,7 +2938,7 @@ function saveBotConfigFromUI(){
 }
 async function saveBotConfig(){
   const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_BOT,value:botConfig,updated_at:new Date().toISOString()}));
-  if(error){console.error('saveBotConfig',error);alert('Could not save bot settings: '+error.message);}
+  if(error){console.error('saveBotConfig',error);showToast('Could not save bot settings: '+error.message,'warn');}
 }
 
 async function runBot(){
@@ -2892,7 +2949,7 @@ async function runBot(){
   botConfig.notes=document.getElementById('botNotes').value;
   botConfig.apiKey=document.getElementById('botKey').value.trim();
   botConfig.model=document.getElementById('botModel').value;
-  if(!botConfig.apiKey){alert('Add your Anthropic API key and click Save bot settings first.');return;}
+  if(!botConfig.apiKey){showToast('Add your Anthropic API key and click Save bot settings first.','warn');return;}
   // Unmatched = still needs review and sitting in "other"
   const unmatched=allTxns.filter(t=>t.needsReview&&(t.cat==='other'||!t.cat));
   if(!unmatched.length){setStatus('● nothing to categorize','var(--text2)');return;}
@@ -2945,7 +3002,7 @@ You will get a JSON array of merchant descriptions. Return ONLY a JSON array of 
 
 async function saveKeywordRules(){
   const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_KEYWORD_RULES,value:keywordRules,updated_at:new Date().toISOString()}));
-  if(error){console.error('saveKeywordRules',error);alert('Could not save keyword rules: '+error.message);}
+  if(error){console.error('saveKeywordRules',error);showToast('Could not save keyword rules: '+error.message,'warn');}
 }
 
 async function deleteKeywordRule(i){
@@ -2963,11 +3020,11 @@ async function deleteRule(mk){
 
 async function clearAllRules(){
   const nLearned=Object.keys(merchantRules).length, nKw=keywordRules.length;
-  if(nLearned===0&&nKw===0){alert('There are no rules to clear in this workspace.');return;}
-  if(!confirm(`Clear ALL rules for this workspace?\n\n• ${nLearned} learned rules\n• ${nKw} keyword rules\n\nThis cannot be undone.`))return;
+  if(nLearned===0&&nKw===0){showToast('There are no rules to clear in this workspace.','warn');return;}
+  if(!await confirmDialog(`Clear ALL rules for this workspace?\n\n• ${nLearned} learned rules\n• ${nKw} keyword rules\n\nThis cannot be undone.`,{title:'Clear all rules',confirmLabel:'Clear rules'}))return;
   if(nLearned>0){
     const{error}=await wsFilter(db.from('merchant_rules').delete()).neq('bucket','');
-    if(error){alert('Failed to clear learned rules: '+error.message);return;}
+    if(error){showToast('Failed to clear learned rules: '+error.message,'warn');return;}
     merchantRules={};askLater=new Set();
   }
   if(nKw>0){keywordRules=[];await saveKeywordRules();}
@@ -3094,8 +3151,8 @@ document.addEventListener('DOMContentLoaded',async()=>{
           await saveCustomCats();
         }
         document.getElementById('rulesBadge').textContent=Object.keys(merchantRules).length;
-        alert(`Imported ${Object.keys(data.rules||{}).length} rules!`);
-      }catch(err){alert('Could not read rules file: '+err.message);}
+        showToast(`Imported ${Object.keys(data.rules||{}).length} rules!`,'warn');
+      }catch(err){showToast('Could not read rules file: '+err.message,'warn');}
     };
     r.readAsText(f);e.target.value='';
   });
@@ -3313,7 +3370,7 @@ async function saveTxnModal(id){
   const amt=parseFloat(document.getElementById('mAmt').value);
   const cat=document.getElementById('mCat').value;
   const note=document.getElementById('mNote').value.trim();
-  if(!date||!desc||isNaN(amt)){alert('Date, description, and amount are required.');return;}
+  if(!date||!desc||isNaN(amt)){showToast('Date, description, and amount are required.','warn');return;}
   if(id){
     // Edit existing
     const t=allTxns.find(x=>x.id===id);
@@ -3331,9 +3388,9 @@ async function saveTxnModal(id){
 }
 
 async function deleteTxn(id){
-  if(!confirm('Delete this transaction? This cannot be undone.'))return;
+  if(!await confirmDialog('Delete this transaction? This cannot be undone.',{title:'Delete transaction',confirmLabel:'Delete'}))return;
   const{error}=await wsFilter(db.from('transactions').delete()).eq('id',id);
-  if(error){alert('Delete failed: '+error.message);return;}
+  if(error){showToast('Delete failed: '+error.message,'warn');return;}
   allTxns=allTxns.filter(t=>t.id!==id);
   updateBadges();renderDashboard();
 }
