@@ -358,6 +358,15 @@ body.dark-mode .review-banner{background:var(--warn-soft)}
 .app-toast.ok{border-color:var(--pos);color:var(--pos)}
 .app-toast.warn{border-color:var(--warn);color:var(--warn-text)}
 @media(max-width:760px){.app-toast{bottom:92px}}
+.txn-check{flex:none;width:16px;height:16px;cursor:pointer;accent-color:var(--accent)}
+.txn-row.selected{background:var(--accent-soft);border-color:var(--accent-border)}
+.txn-list-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 4px 10px;flex-wrap:wrap;min-height:34px}
+.txn-selectall{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);cursor:pointer;user-select:none}
+.txn-selectall input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
+.bulk-bar{display:none;align-items:center;gap:10px}
+.bulk-count{font-size:12.5px;font-weight:600;color:var(--text)}
+.btn-bulk-del{background:var(--neg);color:#fff;border:none}
+.btn-bulk-del:hover{filter:brightness(1.07)}
 </style>
 </head>
 <body>
@@ -592,6 +601,14 @@ body.dark-mode .review-banner{background:var(--warn-soft)}
             <option value="cat_az">Sort: Category A–Z</option>
           </select>
           <button class="btn btn-primary" style="padding:7px 14px;font-size:12px;white-space:nowrap" onclick="openTxnModal()">+ Add</button>
+        </div>
+        <div class="txn-list-head">
+          <label class="txn-selectall"><input type="checkbox" id="selectAllTxns" onchange="toggleSelectAllPage(this.checked)"> Select all on page</label>
+          <div class="bulk-bar" id="bulkBar">
+            <span class="bulk-count" id="bulkCount">0 selected</span>
+            <button class="btn btn-sm btn-secondary" onclick="clearTxnSelection()">Clear</button>
+            <button class="btn btn-sm btn-bulk-del" onclick="deleteSelectedTxns()">Delete selected</button>
+          </div>
         </div>
         <div id="txnList"></div>
         <div class="page-row">
@@ -918,6 +935,7 @@ function wsFilter(q){return workspacesEnabled?q.eq('workspace_id',currentWorkspa
 const NWS_DEFAULT={home:'needs',groceries:'needs',food_work:'needs',auto:'needs',utilities:'needs',personal:'needs',pets:'needs',taxes:'needs',fees:'needs',transfers:'savings',debt:'savings',fastfood:'wants',restaurant:'wants',shopping:'wants',subscriptions:'wants',kids:'wants',tj_soccer:'wants',entertainment:'wants',ram:'wants',business:'wants',cash:'wants',other:'wants'};
 function nwsClass(catId){return nwsOverrides[catId]||NWS_DEFAULT[catId]||'wants';}
 let merchantRules={},askLater=new Set();
+let selectedTxns=new Set(),pageTxnIds=[];  // dashboard multi-select
 // Per-workspace keyword rules (ordered array of {kw,cat}). Empty for a fresh workspace — nothing is forced globally.
 let keywordRules=[];
 // Per-workspace AI categorizer bot. BYO key, stored per workspace.
@@ -2678,11 +2696,13 @@ function renderDashboard(){
     return dateKey(b.date).localeCompare(dateKey(a.date));
   });
   const start=page*PER_PAGE;const slice=txns.slice(start,start+PER_PAGE);
+  pageTxnIds=slice.map(t=>t.id);
   document.getElementById('txnList').innerHTML=slice.length?slice.map(t=>{
     const col=catMap[t.cat]?.color||'#6b7280';
     const rawEsc=t.desc.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
     return `
-    <div class="txn-row${t.needsReview?' needs-review':''}">
+    <div class="txn-row${t.needsReview?' needs-review':''}${selectedTxns.has(t.id)?' selected':''}">
+      <input type="checkbox" class="txn-check" ${selectedTxns.has(t.id)?'checked':''} onchange="toggleTxnSelect('${t.id}',this)">
       <span class="txn-date">${t.date}</span>
       <div class="txn-dot" style="background:${col}"></div>
       <span class="txn-tile" style="background:color-mix(in srgb, ${col} 15%, var(--surface));color:${col}"><i class="ph ${CAT_ICON[t.cat]||'ph-tag'}"></i></span>
@@ -2702,6 +2722,7 @@ function renderDashboard(){
   document.getElementById('pageInfo').textContent=total?`${start+1}–${Math.min(start+PER_PAGE,total)} of ${total}`:'0 results';
   document.getElementById('prevBtn').disabled=page===0;
   document.getElementById('nextBtn').disabled=page>=totalPages-1;
+  updateBulkBar();
 }
 
 function renderMobileHeader(){
@@ -2722,6 +2743,44 @@ function reviewThisTxn(id){
 }
 
 function setActiveCat(cat){activeCat=cat;page=0;renderDashboard();}
+
+// ── Dashboard multi-select / bulk delete ───────────────────────────────────
+function toggleTxnSelect(id,el){
+  if(el.checked)selectedTxns.add(id); else selectedTxns.delete(id);
+  el.closest('.txn-row')?.classList.toggle('selected',el.checked);
+  updateBulkBar();
+}
+function toggleSelectAllPage(checked){
+  pageTxnIds.forEach(id=>{if(checked)selectedTxns.add(id); else selectedTxns.delete(id);});
+  renderDashboard();
+}
+function clearTxnSelection(){selectedTxns.clear();renderDashboard();}
+function updateBulkBar(){
+  // drop any selected ids that are no longer loaded (e.g. after a workspace switch)
+  const present=new Set(allTxns.map(t=>t.id));
+  for(const id of [...selectedTxns])if(!present.has(id))selectedTxns.delete(id);
+  const n=selectedTxns.size;
+  const bar=document.getElementById('bulkBar'); if(bar)bar.style.display=n>0?'flex':'none';
+  const c=document.getElementById('bulkCount'); if(c)c.textContent=`${n} selected`;
+  const sa=document.getElementById('selectAllTxns');
+  if(sa){
+    const allSel=pageTxnIds.length>0 && pageTxnIds.every(id=>selectedTxns.has(id));
+    sa.checked=allSel;
+    sa.indeterminate=!allSel && pageTxnIds.some(id=>selectedTxns.has(id));
+  }
+}
+async function deleteSelectedTxns(){
+  const ids=[...selectedTxns];
+  if(!ids.length)return;
+  if(!await confirmDialog(`Delete ${ids.length} selected transaction${ids.length===1?'':'s'}? This cannot be undone.`,{title:'Delete transactions',confirmLabel:`Delete ${ids.length}`}))return;
+  const{error}=await wsFilter(db.from('transactions').delete()).in('id',ids);
+  if(error){showToast('Delete failed: '+error.message,'warn');return;}
+  const removed=new Set(ids);
+  allTxns=allTxns.filter(t=>!removed.has(t.id));
+  selectedTxns.clear();
+  updateBadges();renderDashboard();
+  showToast(`Deleted ${ids.length} transaction${ids.length===1?'':'s'}.`,'ok');
+}
 function changePage(d){page+=d;renderDashboard();}
 
 async function changeTxnCat(id,newCat){
