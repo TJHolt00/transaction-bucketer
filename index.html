@@ -363,7 +363,8 @@ body.dark-mode .review-banner{background:var(--warn-soft)}
 .txn-list-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 4px 10px;flex-wrap:wrap;min-height:34px}
 .txn-selectall{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);cursor:pointer;user-select:none}
 .txn-selectall input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
-.bulk-bar{display:none;align-items:center;gap:10px}
+.bulk-bar{display:none;align-items:center;gap:8px;flex-wrap:wrap}
+.bulk-cat-sel{padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-ctl);background:var(--surface2);color:var(--text);font-size:12px;outline:none;max-width:170px}
 .bulk-count{font-size:12.5px;font-weight:600;color:var(--text)}
 .btn-bulk-del{background:var(--neg);color:#fff;border:none}
 .btn-bulk-del:hover{filter:brightness(1.07)}
@@ -606,6 +607,8 @@ body.dark-mode .review-banner{background:var(--warn-soft)}
           <label class="txn-selectall"><input type="checkbox" id="selectAllTxns" onchange="toggleSelectAllPage(this.checked)"> Select all on page</label>
           <div class="bulk-bar" id="bulkBar">
             <span class="bulk-count" id="bulkCount">0 selected</span>
+            <select id="bulkCatSel" class="bulk-cat-sel"></select>
+            <button class="btn btn-sm btn-secondary" onclick="applyBulkCategory()">Change category</button>
             <button class="btn btn-sm btn-secondary" onclick="clearTxnSelection()">Clear</button>
             <button class="btn btn-sm btn-bulk-del" onclick="deleteSelectedTxns()">Delete selected</button>
           </div>
@@ -2773,6 +2776,8 @@ function updateBulkBar(){
   // drop any selected ids that are no longer loaded (e.g. after a workspace switch)
   const present=new Set(allTxns.map(t=>t.id));
   for(const id of [...selectedTxns])if(!present.has(id))selectedTxns.delete(id);
+  const bcs=document.getElementById('bulkCatSel');
+  if(bcs&&bcs.options.length<=1)bcs.innerHTML='<option value="">Change category to…</option>'+CATS.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
   const n=selectedTxns.size;
   const bar=document.getElementById('bulkBar'); if(bar)bar.style.display=n>0?'flex':'none';
   const c=document.getElementById('bulkCount'); if(c)c.textContent=`${n} selected`;
@@ -2782,6 +2787,22 @@ function updateBulkBar(){
     sa.checked=allSel;
     sa.indeterminate=!allSel && pageTxnIds.some(id=>selectedTxns.has(id));
   }
+}
+async function applyBulkCategory(){
+  const ids=[...selectedTxns];
+  if(!ids.length){showToast('Select some transactions first.','warn');return;}
+  const cat=document.getElementById('bulkCatSel')?.value;
+  if(!cat){showToast('Pick a category to move them to.','warn');return;}
+  const catMap=getCatMap();
+  const label=catMap[cat]?.label||cat;
+  if(!await confirmDialog(`Change ${ids.length} selected transaction${ids.length===1?'':'s'} to “${label}”?`,{title:'Change category',confirmLabel:'Change',danger:false}))return;
+  const sel=new Set(ids);
+  const changed=allTxns.filter(t=>sel.has(t.id));
+  changed.forEach(t=>{t.cat=cat;t.needsReview=false;t.txnReview=false;});
+  await upsertTxns(changed);
+  selectedTxns.clear();
+  updateBadges();renderDashboard();
+  showToast(`Moved ${ids.length} transaction${ids.length===1?'':'s'} to ${label}.`,'ok');
 }
 async function deleteSelectedTxns(){
   const ids=[...selectedTxns];
