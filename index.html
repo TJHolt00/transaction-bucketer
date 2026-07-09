@@ -2439,10 +2439,22 @@ function buildTxnQueue(txns){
 async function loadFile(text){
   const newTxns=parseCsv(text);
   if(!newTxns.length){document.getElementById('importStatus').textContent='No transactions found — check the file format.';return;}
-  const existingKeys=new Set(allTxns.map(t=>`${t.date}|${t.desc}|${t.amount}`));
-  const toAdd=newTxns
-    .filter(t=>!existingKeys.has(`${t.date}|${t.desc}|${t.amount}`))
-    .map(t=>({...t,id:crypto.randomUUID()}));
+  // Duplicate detection: a transaction is identified by date + description + amount.
+  // Occurrence-aware so genuine same-day repeats (e.g. two identical coffees) are kept,
+  // while re-importing an overlapping CSV skips the rows you already have.
+  const sig=t=>`${t.date}|${t.desc}|${t.amount}`;
+  const existingCounts=new Map();
+  for(const t of allTxns){const k=sig(t);existingCounts.set(k,(existingCounts.get(k)||0)+1);}
+  const seen=new Map();
+  const toAdd=[]; let skipped=0;
+  for(const t of newTxns){
+    const k=sig(t);
+    const already=existingCounts.get(k)||0;
+    const seenCount=seen.get(k)||0;
+    seen.set(k,seenCount+1);
+    if(seenCount<already){skipped++;continue;} // matches one already stored — a duplicate
+    toAdd.push({...t,id:crypto.randomUUID()});
+  }
   allTxns=[...allTxns,...toAdd];
   document.getElementById('importStatus').textContent=`Saving ${toAdd.length} transactions…`;
   await upsertTxns(toAdd);
@@ -2451,10 +2463,12 @@ async function loadFile(text){
   txnQueueIdx=0;merchantIdx=0;
   updateBadges();populateMonths();populateCatFilter();
   const fmt=(toAdd[0]||newTxns[0])?.format==='desktop'?'desktop (website)':'app (mobile)';
+  const dupNote=skipped>0?` Skipped ${skipped.toLocaleString()} duplicate${skipped===1?'':'s'} already in your data.` : '';
   const msg=toAdd.length>0
-    ?`Added ${toAdd.length.toLocaleString()} new transactions (${fmt} format). ${allTxns.length.toLocaleString()} total stored. ${merchantQueue.length} merchants need review.`
-    :`No new transactions found — all ${newTxns.length} were already imported.`;
+    ?`Added ${toAdd.length.toLocaleString()} new transaction${toAdd.length===1?'':'s'} (${fmt} format).${dupNote} ${allTxns.length.toLocaleString()} total stored. ${merchantQueue.length} merchants need review.`
+    :`No new transactions added — all ${newTxns.length.toLocaleString()} row${newTxns.length===1?'':'s'} were already in your data (duplicates skipped).`;
   document.getElementById('importStatus').textContent=msg;
+  showToast(toAdd.length>0?`Imported ${toAdd.length.toLocaleString()} new · skipped ${skipped.toLocaleString()} duplicate${skipped===1?'':'s'}.`:`All ${newTxns.length.toLocaleString()} rows were duplicates — nothing added.`, toAdd.length>0?'ok':'warn');
   if(merchantQueue.length>0){showTab('review');renderMerchantReview();}
   else if(txnQueue.filter(t=>t.needsReview&&t.txnReview).length>0){showTab('txnreview');renderTxnReview();}
   else{showTab('dashboard');renderDashboard();}
