@@ -946,6 +946,19 @@ let botConfig={enabled:false,notes:'',model:'claude-haiku-4-5-20251001',apiKey:'
 // Per-workspace "special rules": deterministic overrides applied at import time.
 // Empty for a fresh workspace — nothing is forced globally.
 let specialRules={zelleUnnamedAsTransfer:false,alwaysAsk:[]};
+// True once a special_rules row has been loaded from the DB — i.e. it has been saved
+// before. Lets the defaults seeder tell "never set" from "user set it to false".
+let specialRulesLoaded=false;
+
+// ── One-time default seeds (applied by seedWorkspaceDefaults, never overwrite user data) ──
+const DEFAULT_BOT_NOTES="Household quirks: Kroger Fuel charges are always gasoline, never groceries, even though the merchant name says Kroger. '365 Market' and any AMK JPMC Polaris charge is Food at Work (work cafeteria), not Fast Food. MNRD-LEWISCENTR is Menards (home improvement/shopping), not a school fee — easy to misread. Goodleap bills two loans: $715.27/mo personal loan, $161.81/mo HVAC loan — check the amount before categorizing, don't assume it's always the personal loan. Affirm charges are old installment purchases being paid off via a personal loan and should taper toward zero over time — flag if a new one appears. TJ sometimes fronts money for his soccer team and gets reimbursed via Zelle/Venmo — incoming payments from teammates aren't always income, check context. Reimbursements (e.g. splitting trip costs or event tickets with friends) can appear as either incoming money or an outgoing payment that's really someone paying us back — don't assume.";
+const DEFAULT_ALWAYS_ASK=[
+  {match:"planet fitness",cat:"subscriptions",note:"Cancelled June 2026 — any charge here is a billing error, not a real subscription. Flag it."},
+  {match:"thrive market",cat:"shopping",note:"Cancelled June 2026, refund was in progress — flag if it charges again."},
+  {match:"apple.com/bill",cat:"subscriptions",note:"Unidentified ~$30.49/mo charge — confirm which family member's subscription and what it's for before assuming."},
+  {match:"paypal",cat:"other",note:"Generic PayPal varies every time — subscription, shopping, or app purchase. Never assume the same category twice, ask each time."},
+  {match:"resolute ath",cat:"kids",note:"If the description mentions 'drinks', this is TJ's soccer team (team drinks), not cheer — recategorize as TJ Soccer instead."}
+];
 
 function txnToRow(t){
   return{id:t.id,date:t.date,description:t.desc,amount:t.amount,cat:t.cat||'other',note:t.note||'',needs_review:!!t.needsReview,txn_review:!!t.txnReview,confident:!!t.confident,format:t.format||'app'};
@@ -975,6 +988,7 @@ async function loadAllData(){
   keywordRules=[];
   botConfig={enabled:false,notes:'',model:'claude-haiku-4-5-20251001',apiKey:''};
   specialRules={zelleUnnamedAsTransfer:false,alwaysAsk:[]};
+  specialRulesLoaded=false;
   debtState={debts:[],strategy:'avalanche',extra:0};
   nwsOverrides={};
   netWorthState={assets:[],liabilities:[],snapshots:[]};
@@ -1019,6 +1033,7 @@ async function loadAllData(){
       botConfig={enabled:!!s.value.enabled,notes:s.value.notes||'',model:s.value.model||'claude-haiku-4-5-20251001',apiKey:s.value.apiKey||''};
     }
     if(s.key===APP_SETTING_SPECIAL && s.value && typeof s.value==='object'){
+      specialRulesLoaded=true;
       specialRules={
         zelleUnnamedAsTransfer:!!s.value.zelleUnnamedAsTransfer,
         alwaysAsk:Array.isArray(s.value.alwaysAsk)?s.value.alwaysAsk.filter(r=>r&&r.match).map(r=>({match:String(r.match),cat:String(r.cat||'other'),note:String(r.note||'')})):[]
@@ -3018,6 +3033,50 @@ async function saveSpecialRules(){
   const{error}=await db.from('app_settings').upsert(wsAttach({key:APP_SETTING_SPECIAL,value:specialRules,updated_at:new Date().toISOString()}));
   if(error)console.error('saveSpecialRules',error);
 }
+
+// One-time, idempotent defaults seeder. Runs after loadAllData on every app load.
+// Each check is independent and only ever fills in a value the user has NOT set —
+// it never overwrites notes, always-ask rules, or toggles a user has since edited.
+// Safe to run on every load: dedups always-ask by `match`, only seeds the Zelle
+// toggle when special_rules has never been saved.
+async function seedWorkspaceDefaults(){
+  // No workspace picked yet (multi-workspace mode) — nothing scoped to seed into.
+  if(workspacesEnabled && !currentWorkspaceId)return;
+
+  // 1. Bot notes — seed only if empty/unset.
+  if(!botConfig.notes || !botConfig.notes.trim()){
+    botConfig.notes=DEFAULT_BOT_NOTES;
+    await saveBotConfig();
+    if(document.getElementById('botNotes'))renderBotConfig();
+  }
+
+  // 2. Always-ask rules — add any default whose `match` isn't already present
+  //    (matched case-insensitively, the same way autoAssign compares them).
+  specialRules.alwaysAsk=specialRules.alwaysAsk||[];
+  const seen=new Set(specialRules.alwaysAsk.map(r=>String(r.match).toLowerCase()));
+  let specialChanged=false;
+  for(const d of DEFAULT_ALWAYS_ASK){
+    if(seen.has(d.match.toLowerCase()))continue;
+    specialRules.alwaysAsk.push({match:d.match,cat:d.cat,note:d.note});
+    seen.add(d.match.toLowerCase());
+    specialChanged=true;
+  }
+
+  // 3. Unnamed-Zelle→transfer toggle — turn on only if special_rules has never been
+  //    saved before. A prior save means the user has owned this setting, so a false
+  //    there is a deliberate choice we must not stomp.
+  if(!specialRulesLoaded && specialRules.zelleUnnamedAsTransfer===false){
+    specialRules.zelleUnnamedAsTransfer=true;
+    specialChanged=true;
+  }
+
+  if(specialChanged){
+    await saveSpecialRules();
+    // Now that a row exists, further loads won't re-seed the Zelle toggle.
+    specialRulesLoaded=true;
+    if(document.getElementById('specialZelle'))renderSpecialRules();
+  }
+}
 function onBotToggle(on){
   botConfig.enabled=on;
   document.getElementById('botBody').style.display=on?'block':'none';
@@ -3051,14 +3110,27 @@ async function runBot(){
   const groups={};
   for(const t of unmatched){const mk=getMK(t.desc);if(!groups[mk])groups[mk]={label:getCanon(t.desc),txns:[]};groups[mk].txns.push(t);}
   const mks=Object.keys(groups).slice(0,300);
-  const merchants=mks.map(mk=>groups[mk].label);
+  // Each merchant carries an amount hint so the model can resolve amount-dependent
+  // cases (e.g. one merchant that bills two different loans at two different amounts).
+  // Send a single representative amount when the group's amounts all match, or a
+  // min–max range when they differ. Negative = money out, positive = money in.
+  const fmtAmt=n=>(n<0?'-$':'+$')+Math.abs(n).toFixed(2);
+  const merchants=mks.map(mk=>{
+    const g=groups[mk];
+    const amts=[...new Set(g.txns.map(t=>Math.round((+t.amount||0)*100)/100))];
+    let amtStr;
+    if(amts.length<=1)amtStr=`amount ${fmtAmt(amts[0]||0)}`;
+    else amtStr=`amounts range ${fmtAmt(Math.min(...amts))} to ${fmtAmt(Math.max(...amts))}`;
+    return `${g.label} (${amtStr})`;
+  });
   const validIds=new Set(CATS.map(c=>c.id));
   const catLines=CATS.filter(c=>c.id!=='income').map(c=>`${c.id} = ${c.label}`).join('\n');
   const system=`You categorize bank transaction descriptions into a household's budget categories.
 Use ONLY these category ids (left side):
 ${catLines}
 ${botConfig.notes?('\nHousehold notes / rules to follow:\n'+botConfig.notes+'\n'):''}
-You will get a JSON array of merchant descriptions. Return ONLY a JSON array of category ids, exactly one per input, in the same order. No prose, no code fences. If genuinely unsure, use "other".`;
+You will get a JSON array of merchant descriptions. Each entry includes an amount hint in parentheses, e.g. "Goodleap (amount -$715.27)" or "Zelle (amounts range -$161.81 to -$715.27)". A negative amount is money leaving the account (a payment or purchase); a positive amount is money coming in. Use the amount whenever a household note ties a category to a specific amount — for example a merchant that bills two different loans at two different monthly amounts. If a case depends on the amount and you cannot confidently resolve it (for instance an amount range that could match more than one meaning), return "other" instead of guessing.
+Return ONLY a JSON array of category ids, exactly one per input, in the same order. No prose, no code fences. If genuinely unsure, use "other".`;
   btn.disabled=true;btn.textContent='Categorizing…';setStatus('● calling Claude…');
   try{
     const r=await fetch('https://api.anthropic.com/v1/messages',{
@@ -3200,6 +3272,7 @@ function setupRealtime(){
 async function initApp(){
   document.getElementById('importStatus').textContent='Loading your data…';
   await loadAllData();
+  await seedWorkspaceDefaults();
   renderWorkspaceSwitcher();
   if(workspacesEnabled && !currentWorkspaceId){
     // No workspace selected — prompt user to create their first one.
