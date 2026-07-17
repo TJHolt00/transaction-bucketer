@@ -368,6 +368,21 @@ body.dark-mode .review-banner{background:var(--warn-soft)}
 .bulk-count{font-size:12.5px;font-weight:600;color:var(--text)}
 .btn-bulk-del{background:var(--neg);color:#fff;border:none}
 .btn-bulk-del:hover{filter:brightness(1.07)}
+/* ===== Accessibility: keyboard focus + reduced motion (via ui-ux-pro-max) ===== */
+/* Priority 1 (CRITICAL) — visible focus ring for keyboard users. :focus-visible shows it
+   for keyboard nav only, not mouse clicks. !important overrides the scattered outline:none. */
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,
+[tabindex]:focus-visible,.tab:focus-visible,.cat-btn:focus-visible,.nav-item:focus-visible,
+.upload-zone:focus-visible,.txn-check:focus-visible{
+  outline:2px solid var(--accent)!important;outline-offset:2px;
+}
+/* Priority 7 — respect prefers-reduced-motion: collapse transitions/animations to near-instant. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important;
+  }
+}
 </style>
 </head>
 <body>
